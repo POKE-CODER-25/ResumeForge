@@ -56,24 +56,52 @@ function findFirstMatch(text, pattern) {
   return text.match(pattern)?.[0]?.trim() || ''
 }
 
-function findUrl(text, hostPattern) {
-  const urls = text.match(/(?:https?:\/\/|www\.)[^\s,;|)]+/gi) || []
-  return urls.find((url) => hostPattern.test(url)) || ''
+function trimUrlPunctuation(value) {
+  return value
+    .replace(/^[([{<"'`]+/, '')
+    .replace(/[)\]}>.,;:!?"'`]+$/, '')
 }
 
-function ensureProtocol(url) {
+function extractUrls(text) {
+  const urlPattern = /(?:https?:\/\/|www\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\/[^\s|,;()[\]{}<>]*)?/gi
+
+  const sourceText = String(text || '')
+  return [...sourceText.matchAll(urlPattern)]
+    .filter((match) => sourceText[match.index - 1] !== '@')
+    .map((match) => trimUrlPunctuation(match[0]))
+    .filter((url) => (
+      url
+      && !/^\d+(?:\.\d+)+$/.test(url)
+      && !/\.(?:js|ts|py|java|net)$/i.test(url)
+    ))
+}
+
+function normalizeUrl(url) {
   if (!url) {
     return ''
   }
-  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+  const cleaned = trimUrlPunctuation(url)
+  if (/^https?:\/\//i.test(cleaned)) {
+    return cleaned
+  }
+  return `https://${cleaned.replace(/^www\./i, '')}`
 }
 
-function extractContactDetails(text, contactText) {
-  const github = ensureProtocol(findUrl(text, /github\.com/i))
-  const linkedin = ensureProtocol(findUrl(text, /linkedin\.com/i))
-  const allUrls = contactText.match(/(?:https?:\/\/|www\.)[^\s,;|)]+/gi) || []
-  const portfolio = ensureProtocol(allUrls.find((url) => (
-    !/github\.com|linkedin\.com/i.test(url)
+function findUrl(urls, hostPattern) {
+  return normalizeUrl(urls.find((url) => hostPattern.test(url)) || '')
+}
+
+function extractContactDetails(text) {
+  const urls = extractUrls(text)
+  const github = findUrl(urls, /(?:^|\/\/)(?:www\.)?github\.com\//i)
+  const linkedin = findUrl(urls, /(?:^|\/\/)(?:www\.)?linkedin\.com\/(?:in|pub)\//i)
+  const portfolio = normalizeUrl(urls.find((url) => (
+    !/(?:^|\/\/)(?:www\.)?(?:github\.com|linkedin\.com)\//i.test(url)
+    && (
+      /\.(?:web\.app|vercel\.app|netlify\.app)(?:\/|$)/i.test(url)
+      || /\b(?:portfolio|personal|about|profile)\b/i.test(url)
+      || /\.(?:com|dev|io|me|app|site|tech)(?:\/|$)/i.test(url)
+    )
   )) || '')
 
   return {
@@ -153,14 +181,16 @@ function buildProject(sectionText, allText) {
   }
 
   const lines = sectionText.split('\n').filter(Boolean)
+  const projectUrls = extractUrls(sectionText)
   return [{
     title: getFirstContentLine(lines).slice(0, 100) || 'Resume Project',
     techStack: extractTechnologies(sectionText).join(', '),
     description: lines.slice(1).join('\n') || sectionText,
     highlights: lines.slice(1).join('\n'),
-    githubLink: findUrl(sectionText, /github\.com/i),
-    liveLink: ensureProtocol((sectionText.match(/(?:https?:\/\/|www\.)[^\s,;|)]+/gi) || [])
-      .find((url) => !/github\.com/i.test(url)) || ''),
+    githubLink: findUrl(projectUrls, /(?:^|\/\/)(?:www\.)?github\.com\//i),
+    liveLink: normalizeUrl(projectUrls.find((url) => (
+      !/(?:^|\/\/)(?:www\.)?github\.com\//i.test(url)
+    )) || ''),
     sourceText: allText,
   }]
 }
@@ -191,7 +221,7 @@ export function analyzeResumeText(text) {
   try {
     const lines = cleanedText.split(/\n/).map((line) => line.trim()).filter(Boolean)
     const { sections, preamble } = splitIntoSections(lines)
-    const contact = extractContactDetails(cleanedText, preamble.join('\n'))
+    const contact = extractContactDetails(cleanedText)
     const summaryText = getSectionText(sections.summary)
       || preamble
         .map(cleanLine)

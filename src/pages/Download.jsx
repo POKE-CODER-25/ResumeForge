@@ -1,8 +1,27 @@
+import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
+import ResumePreview from '../components/ResumePreview'
 import { downloadFormats } from '../data/appData'
+import {
+  RESUME_WORKFLOW_CLEARED_EVENT,
+  resolveActiveEditableResume,
+} from '../data/uploadedResumeData'
 
 function Download() {
+  const [activeResume, setActiveResume] = useState(resolveActiveEditableResume)
+
+  useEffect(() => {
+    function handleWorkflowCleared() {
+      setActiveResume(resolveActiveEditableResume())
+    }
+
+    window.addEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    return () => {
+      window.removeEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    }
+  }, [])
+
   return (
     <div className="page-surface">
       <div className="container narrow-container">
@@ -11,6 +30,14 @@ function Download() {
           title="Ready when you are"
           description="Choose the format that fits your application workflow. Download functionality will be enabled in a future release."
         />
+        <div className="workspace-source-row">
+          <span className={`analysis-source ${activeResume.source.startsWith('Uploaded') ? 'uploaded' : ''}`}>
+            {activeResume.source}
+          </span>
+          {activeResume.uploadedResume && !activeResume.uploadedResume.importedForEditing && (
+            <span className="analysis-source uploaded">Uploaded Resume Analysis Available</span>
+          )}
+        </div>
         <div className="download-layout">
           <section className="download-main">
             <div className="download-status"><span className="feature-icon"><Icon name="download" size={24} /></span><div><h2>Choose your format</h2><p>Your final resume will be prepared using your latest editor changes.</p></div></div>
@@ -27,8 +54,8 @@ function Download() {
             <p className="prototype-note">Download actions are disabled in this foundation prototype.</p>
           </section>
           <aside className="download-preview">
-            <div className="mini-paper"><span className="mini-name" /><span className="mini-role" /><hr />{[1, 2, 3, 4].map((item) => <div key={item}><b /><span /><span /><span /></div>)}</div>
-            <strong>Resume preview</strong><p>Your completed resume will appear here.</p>
+            <div className="download-resume-stage"><ResumePreview resumeData={activeResume.resumeData} /></div>
+            <strong>Resume preview</strong><p>Your latest editable resume is shown here.</p>
           </aside>
         </div>
       </div>

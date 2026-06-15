@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import FormField from '../components/FormField'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
@@ -12,6 +12,10 @@ import {
   normalizeResumeData,
   saveResumeData,
 } from '../data/resumeData'
+import {
+  RESUME_WORKFLOW_CLEARED_EVENT,
+  resolveActiveEditableResume,
+} from '../data/uploadedResumeData'
 
 const repeatableSections = {
   education: {
@@ -54,12 +58,27 @@ function SectionHeader({ icon = 'file', title = '', description = '' }) {
 }
 
 function Builder() {
-  const [resumeData, setResumeData] = useState(loadResumeData)
+  const location = useLocation()
+  const [activeSource, setActiveSource] = useState(resolveActiveEditableResume)
+  const [resumeData, setResumeData] = useState(() => activeSource.resumeData || loadResumeData())
   const completion = getResumeCompletion(resumeData)
 
   useEffect(() => {
     saveResumeData(resumeData)
   }, [resumeData])
+
+  useEffect(() => {
+    function handleWorkflowCleared() {
+      const nextSource = resolveActiveEditableResume()
+      setActiveSource(nextSource)
+      setResumeData(nextSource.resumeData)
+    }
+
+    window.addEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    return () => {
+      window.removeEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    }
+  }, [])
 
   function updateObject(section, field, value) {
     setResumeData((current) => {
@@ -144,6 +163,22 @@ function Builder() {
             </button>
           )}
         />
+
+        {location.state?.importedResume && activeSource.uploadedResume?.importedForEditing && (
+          <div className="import-success" role="status">
+            <Icon name="check" size={18} />
+            <div><strong>Uploaded resume loaded into editor.</strong><span>You can now refine the parsed content in the Builder.</span></div>
+          </div>
+        )}
+
+        <div className="workspace-source-row">
+          <span className={`analysis-source ${activeSource.source.startsWith('Uploaded') ? 'uploaded' : ''}`}>
+            {activeSource.source}
+          </span>
+          {activeSource.uploadedResume && !activeSource.uploadedResume.importedForEditing && (
+            <span className="analysis-source uploaded">Uploaded Resume Analysis Available</span>
+          )}
+        </div>
 
         <div className="progress-card builder-progress">
           <div><span>Profile completion</span><strong>{completion}%</strong></div>

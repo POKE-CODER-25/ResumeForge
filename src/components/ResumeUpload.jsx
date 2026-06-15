@@ -8,7 +8,6 @@ function ResumeUpload({
   warning = '',
   isProcessing = false,
   onFile = () => {},
-  onRemove = () => {},
 }) {
   const inputRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -93,17 +92,6 @@ function ResumeUpload({
               <strong>{file.name}</strong>
               <span>{isProcessing ? 'Extracting and analyzing locally...' : 'Ready - click to replace'}</span>
             </div>
-            <button
-              type="button"
-              className="remove-upload"
-              disabled={isProcessing}
-              onClick={(event) => {
-                event.stopPropagation()
-                onRemove()
-              }}
-            >
-              Remove
-            </button>
           </div>
         ) : (
           <div className="drop-zone-empty">
@@ -117,7 +105,7 @@ function ResumeUpload({
 
       {error && <p className="upload-message error" role="alert">{error}</p>}
       {!error && warning && <p className="upload-message warning" role="status">{warning}</p>}
-      <p className="upload-privacy"><Icon name="shield" size={15} /> Processed in your browser. Files are never uploaded or stored.</p>
+      <p className="upload-privacy"><Icon name="shield" size={15} /> Files are processed locally. Only extracted text is stored in this browser until you remove it.</p>
     </section>
   )
 }

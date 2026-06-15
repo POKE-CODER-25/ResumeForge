@@ -1,9 +1,16 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
 import ResumeUpload from '../components/ResumeUpload'
-import { loadResumeData } from '../data/resumeData'
+import { loadResumeData, saveResumeData } from '../data/resumeData'
+import {
+  clearUploadedResumeWorkflow,
+  loadUploadedResumeData,
+  markUploadedResumeImported,
+  RESUME_WORKFLOW_CLEARED_EVENT,
+  saveUploadedResumeData,
+} from '../data/uploadedResumeData'
 import { analyzeResumeHealth } from '../utils/resumeHealthEngine'
 import { extractResumeText } from '../utils/resumeTextExtractor'
 import { analyzeResumeText } from '../utils/resumeTextAnalyzer'
@@ -71,16 +78,44 @@ function DoctorCard({ item }) {
 }
 
 function CredentialReport() {
-  const [builderData] = useState(loadResumeData)
-  const [uploadedFile, setUploadedFile] = useState(null)
-  const [uploadedData, setUploadedData] = useState(null)
+  const navigate = useNavigate()
+  const [builderData, setBuilderData] = useState(loadResumeData)
+  const [uploadedResume, setUploadedResume] = useState(loadUploadedResumeData)
+  const [uploadedFile, setUploadedFile] = useState(() => {
+    const stored = loadUploadedResumeData()
+    return stored ? { name: stored.filename } : null
+  })
   const [uploadError, setUploadError] = useState('')
-  const [uploadWarning, setUploadWarning] = useState('')
+  const [uploadWarning, setUploadWarning] = useState(() => (
+    loadUploadedResumeData()?.warning || ''
+  ))
   const [isProcessing, setIsProcessing] = useState(false)
-  const isUploadedSource = uploadedData !== null
-  const report = analyzeResumeHealth(isUploadedSource ? uploadedData : builderData)
+  const [showUploadedPreview, setShowUploadedPreview] = useState(false)
+  const isUploadedSource = uploadedResume !== null
+  const report = isUploadedSource
+    ? uploadedResume.healthReport || analyzeResumeHealth(uploadedResume.parsedResume)
+    : analyzeResumeHealth(builderData)
   const scoreStatus = getScoreStatus(report.overallScore)
-  const sourceLabel = isUploadedSource ? 'Uploaded Resume' : 'Resume Builder'
+  const sourceLabel = isUploadedSource
+    ? 'Uploaded Resume Analysis'
+    : 'Resume Builder Data'
+
+  useEffect(() => {
+    function handleWorkflowCleared() {
+      setBuilderData(loadResumeData())
+      setUploadedFile(null)
+      setUploadedResume(null)
+      setUploadError('')
+      setUploadWarning('')
+      setShowUploadedPreview(false)
+      setIsProcessing(false)
+    }
+
+    window.addEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    return () => {
+      window.removeEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    }
+  }, [])
 
   async function handleUpload(file, validationError) {
     if (validationError || !file) {
@@ -89,7 +124,6 @@ function CredentialReport() {
     }
 
     setUploadedFile(file)
-    setUploadedData(null)
     setUploadError('')
     setUploadWarning('')
     setIsProcessing(true)
@@ -97,22 +131,46 @@ function CredentialReport() {
     try {
       const text = await extractResumeText(file)
       const analysis = analyzeResumeText(text)
-      setUploadedData(analysis.resumeData)
+      const healthReport = analyzeResumeHealth(analysis.resumeData)
+      const storedUpload = {
+        filename: file.name,
+        extractedText: text,
+        parsedResume: analysis.resumeData,
+        healthReport,
+        analysisSource: 'Uploaded Resume Analysis',
+        warning: analysis.warning,
+        importedForEditing: false,
+        updatedAt: new Date().toISOString(),
+      }
+      saveUploadedResumeData(storedUpload)
+      setUploadedResume(loadUploadedResumeData() || storedUpload)
       setUploadWarning(analysis.warning)
     } catch {
-      const partialAnalysis = analyzeResumeText('')
-      setUploadedData(partialAnalysis.resumeData)
-      setUploadWarning('We could not fully understand this resume. Partial analysis is shown.')
+      setUploadedFile(uploadedResume ? { name: uploadedResume.filename } : null)
+      setUploadError('We could not extract readable text from this file.')
     } finally {
       setIsProcessing(false)
     }
   }
 
   function removeUpload() {
-    setUploadedFile(null)
-    setUploadedData(null)
-    setUploadError('')
-    setUploadWarning('')
+    clearUploadedResumeWorkflow()
+  }
+
+  function improveResume() {
+    if (!uploadedResume) {
+      navigate('/builder')
+      return
+    }
+
+    saveResumeData(uploadedResume.parsedResume)
+    const importedUpload = markUploadedResumeImported()
+    if (importedUpload) {
+      setUploadedResume(importedUpload)
+    }
+    navigate('/builder', {
+      state: { importedResume: true },
+    })
   }
 
   return (
@@ -122,7 +180,7 @@ function CredentialReport() {
           eyebrow="Credential Report"
           title="Resume Health Report"
           description="A clear view of what is working, what needs attention, and which sections can strengthen your application."
-          actions={<Link className="button button-primary" to="/builder">Improve resume <Icon name="arrowRight" size={17} /></Link>}
+          actions={<button className="button button-primary" type="button" onClick={improveResume}>Improve resume <Icon name="arrowRight" size={17} /></button>}
         />
         <ResumeUpload
           file={uploadedFile}
@@ -130,8 +188,41 @@ function CredentialReport() {
           warning={uploadWarning}
           isProcessing={isProcessing}
           onFile={handleUpload}
-          onRemove={removeUpload}
         />
+        {uploadedResume && (
+          <section className="uploaded-resume-actions">
+            <div>
+              <span className="analysis-source uploaded">Uploaded Resume Analysis</span>
+              <strong>{uploadedResume.filename}</strong>
+            </div>
+            <div>
+              <button className="button button-secondary" type="button" onClick={() => setShowUploadedPreview((current) => !current)}>
+                {showUploadedPreview ? 'Hide Preview' : 'Preview Uploaded Resume'}
+              </button>
+              <button className="remove-uploaded-resume" type="button" onClick={removeUpload}>
+                Remove Uploaded Resume
+              </button>
+            </div>
+          </section>
+        )}
+        {uploadedResume && showUploadedPreview && (
+          <section className="uploaded-resume-preview">
+            <div className="uploaded-preview-heading">
+              <div><span className="status-label">Extracted content</span><h2>{uploadedResume.filename}</h2></div>
+              <span>{uploadedResume.extractedText.length.toLocaleString()} characters</span>
+            </div>
+            <div className="uploaded-preview-grid">
+              <div>
+                <h3>Plain text preview</h3>
+                <pre>{uploadedResume.extractedText}</pre>
+              </div>
+              <div>
+                <h3>Parsed sections</h3>
+                <ParsedResumeSummary resumeData={uploadedResume.parsedResume} />
+              </div>
+            </div>
+          </section>
+        )}
         <section className="health-overview">
           <div className="large-score">
             <div
@@ -203,9 +294,32 @@ function CredentialReport() {
           )}
         </section>
 
-        <div className="report-note"><Icon name="shield" size={20} /><div><strong>Private by design</strong><p>Your report is based only on the resume information you provide.</p></div></div>
+        <div className="report-note"><Icon name="shield" size={20} /><div><strong>Private by design</strong><p>Files are processed locally. Only extracted text is stored in this browser until you remove it.</p></div></div>
       </div>
     </div>
+  )
+}
+
+function ParsedResumeSummary({ resumeData }) {
+  const sections = [
+    ['Name', resumeData.personalDetails.fullName],
+    ['Summary', resumeData.summary],
+    ['Education', resumeData.education.map((entry) => entry.degree || entry.institution).filter(Boolean).join(', ')],
+    ['Skills', resumeData.skills.technicalSkills || resumeData.skills.tools],
+    ['Projects', resumeData.projects.map((entry) => entry.title).filter(Boolean).join(', ')],
+    ['Experience', resumeData.experience.map((entry) => entry.role || entry.company).filter(Boolean).join(', ')],
+    ['Certifications', resumeData.certifications.map((entry) => entry.title).filter(Boolean).join(', ')],
+  ]
+
+  return (
+    <dl className="parsed-section-list">
+      {sections.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value || 'Not identified'}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
 
