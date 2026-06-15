@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
+import ResumeUpload from '../components/ResumeUpload'
 import { loadResumeData } from '../data/resumeData'
 import { analyzeResumeHealth } from '../utils/resumeHealthEngine'
+import { extractResumeText } from '../utils/resumeTextExtractor'
+import { analyzeResumeText } from '../utils/resumeTextAnalyzer'
 
 const categoryMeta = [
   { key: 'sectionCompletenessScore', label: 'Section Completeness', icon: 'document' },
@@ -67,8 +71,49 @@ function DoctorCard({ item }) {
 }
 
 function CredentialReport() {
-  const report = analyzeResumeHealth(loadResumeData())
+  const [builderData] = useState(loadResumeData)
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [uploadedData, setUploadedData] = useState(null)
+  const [uploadError, setUploadError] = useState('')
+  const [uploadWarning, setUploadWarning] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const isUploadedSource = uploadedData !== null
+  const report = analyzeResumeHealth(isUploadedSource ? uploadedData : builderData)
   const scoreStatus = getScoreStatus(report.overallScore)
+  const sourceLabel = isUploadedSource ? 'Uploaded Resume' : 'Resume Builder'
+
+  async function handleUpload(file, validationError) {
+    if (validationError || !file) {
+      setUploadError(validationError || 'Choose a PDF, DOCX, or TXT resume.')
+      return
+    }
+
+    setUploadedFile(file)
+    setUploadedData(null)
+    setUploadError('')
+    setUploadWarning('')
+    setIsProcessing(true)
+
+    try {
+      const text = await extractResumeText(file)
+      const analysis = analyzeResumeText(text)
+      setUploadedData(analysis.resumeData)
+      setUploadWarning(analysis.warning)
+    } catch {
+      const partialAnalysis = analyzeResumeText('')
+      setUploadedData(partialAnalysis.resumeData)
+      setUploadWarning('We could not fully understand this resume. Partial analysis is shown.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  function removeUpload() {
+    setUploadedFile(null)
+    setUploadedData(null)
+    setUploadError('')
+    setUploadWarning('')
+  }
 
   return (
     <div className="page-surface">
@@ -78,6 +123,14 @@ function CredentialReport() {
           title="Resume Health Report"
           description="A clear view of what is working, what needs attention, and which sections can strengthen your application."
           actions={<Link className="button button-primary" to="/builder">Improve resume <Icon name="arrowRight" size={17} /></Link>}
+        />
+        <ResumeUpload
+          file={uploadedFile}
+          error={uploadError}
+          warning={uploadWarning}
+          isProcessing={isProcessing}
+          onFile={handleUpload}
+          onRemove={removeUpload}
         />
         <section className="health-overview">
           <div className="large-score">
@@ -89,7 +142,12 @@ function CredentialReport() {
               <strong>{report.overallScore}</strong><span>/100</span>
             </div>
             <div>
-              <span className="status-label">{scoreStatus.label}</span>
+              <div className="analysis-labels">
+                <span className="status-label">{scoreStatus.label}</span>
+                <span className={`analysis-source ${isUploadedSource ? 'uploaded' : ''}`}>
+                  Analysis Source: {sourceLabel}
+                </span>
+              </div>
               <h2>{scoreStatus.title}</h2>
               <p>Based on completeness, technical depth, impact, and professional readiness.</p>
             </div>
@@ -128,7 +186,7 @@ function CredentialReport() {
             <div>
               <span className="status-label">Resume Doctor</span>
               <h2>Turn weak content into recruiter-ready evidence</h2>
-              <p>Prioritized, deterministic improvements based on the exact content in your Builder.</p>
+              <p>Prioritized, deterministic improvements based on the exact content in your {sourceLabel.toLowerCase()}.</p>
             </div>
           </div>
           {report.resumeDoctor.length > 0 ? (
