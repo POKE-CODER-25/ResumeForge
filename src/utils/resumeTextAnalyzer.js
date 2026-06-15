@@ -9,13 +9,8 @@ const SECTION_ALIASES = {
   certifications: ['certifications', 'certificates', 'licenses', 'courses', 'credentials', 'achievements'],
 }
 
-const TECHNOLOGIES = [
-  'JavaScript', 'TypeScript', 'React Native', 'React', 'Next.js', 'Node.js',
-  'Express', 'Python', 'Java', 'C++', 'C#', 'Flutter', 'Dart', 'Firebase',
-  'MongoDB', 'PostgreSQL', 'MySQL', 'SQL', 'AWS', 'Azure', 'Docker',
-  'Kubernetes', 'Git', 'GitHub', 'HTML', 'CSS', 'Tailwind', 'Figma',
-  'REST API', 'GraphQL', 'Redux', 'Spring Boot', 'Django', 'Flask',
-]
+const ROLE_WORDS = /\b(?:developer|engineer|designer|architect|analyst|manager|builder|specialist|consultant|scientist|strategist|product|frontend|backend|full[- ]?stack|data|ai|creative|systems?)\b/i
+const BULLET_PATTERN = /^[\s•●▪◦■◆*-]+/
 
 const HEADING_LOOKUP = Object.entries(SECTION_ALIASES).reduce((lookup, [section, aliases]) => {
   aliases.forEach((alias) => lookup.set(alias, section))
@@ -23,10 +18,14 @@ const HEADING_LOOKUP = Object.entries(SECTION_ALIASES).reduce((lookup, [section,
 }, new Map())
 
 function cleanLine(line) {
-  return line
-    .replace(/^[\s•●▪◦■◆*-]+/, '')
+  return String(line || '')
+    .replace(BULLET_PATTERN, '')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function isBulletLine(line) {
+  return /^[\s]*[•●▪◦■◆*-]\s*/.test(String(line || ''))
 }
 
 function normalizeHeading(line) {
@@ -64,8 +63,8 @@ function trimUrlPunctuation(value) {
 
 function extractUrls(text) {
   const urlPattern = /(?:https?:\/\/|www\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\/[^\s|,;()[\]{}<>]*)?/gi
-
   const sourceText = String(text || '')
+
   return [...sourceText.matchAll(urlPattern)]
     .filter((match) => sourceText[match.index - 1] !== '@')
     .map((match) => trimUrlPunctuation(match[0]))
@@ -81,10 +80,9 @@ function normalizeUrl(url) {
     return ''
   }
   const cleaned = trimUrlPunctuation(url)
-  if (/^https?:\/\//i.test(cleaned)) {
-    return cleaned
-  }
-  return `https://${cleaned.replace(/^www\./i, '')}`
+  return /^https?:\/\//i.test(cleaned)
+    ? cleaned
+    : `https://${cleaned.replace(/^www\./i, '')}`
 }
 
 function findUrl(urls, hostPattern) {
@@ -111,21 +109,6 @@ function extractContactDetails(text) {
     linkedin,
     portfolio,
   }
-}
-
-function findName(lines) {
-  const excluded = /@|https?:|www\.|linkedin|github|\d{4,}|resume|curriculum vitae/i
-  return lines
-    .slice(0, 8)
-    .map(cleanLine)
-    .find((line) => (
-      line.length >= 3
-      && line.length <= 60
-      && !excluded.test(line)
-      && !identifyHeading(line)
-      && /^[A-Za-z][A-Za-z.' -]+$/.test(line)
-      && line.split(/\s+/).length <= 5
-    )) || ''
 }
 
 function splitIntoSections(lines) {
@@ -160,38 +143,283 @@ function splitIntoSections(lines) {
   return { sections, preamble }
 }
 
-function extractTechnologies(text) {
-  const normalizedText = text.toLowerCase()
-  return TECHNOLOGIES.filter((technology) => (
-    normalizedText.includes(technology.toLowerCase())
-  ))
+function parseHeader(preamble, fullText) {
+  const lines = preamble.map(cleanLine).filter(Boolean)
+  const contact = extractContactDetails(fullText)
+  const fullName = lines[0] && !/@|https?:|www\.|\d{4,}/i.test(lines[0])
+    ? lines[0]
+    : ''
+  const roleLine = lines.slice(1, 4).find((line) => (
+    ROLE_WORDS.test(line)
+    && !/@|https?:|www\.|linkedin|github/i.test(line)
+  )) || ''
+  const targetRole = roleLine
+    .split(/\s*[·|]\s*/)
+    .map((role) => role.trim())
+    .filter(Boolean)
+    .join(' / ')
+  const location = lines.find((line, index) => (
+    index > 0
+    && index < 7
+    && /,\s*[A-Za-z][A-Za-z .'-]+$/.test(line)
+    && !/@|https?:|www\.|linkedin|github|\d{4}/i.test(line)
+    && line !== roleLine
+  ))?.replace(/^\|\s*/, '') || ''
+
+  return {
+    fullName,
+    targetRole,
+    location,
+    ...contact,
+  }
 }
 
-function getSectionText(lines) {
-  return lines.map(cleanLine).filter(Boolean).join('\n')
+function parseSummary(lines) {
+  return lines
+    .map(cleanLine)
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
-function getFirstContentLine(lines) {
-  return lines.map(cleanLine).find(Boolean) || ''
+function splitValues(value) {
+  return value
+    .split(/\s*(?:,|·|\||;)\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
-function buildProject(sectionText, allText) {
-  if (!sectionText) {
+function unique(items) {
+  return [...new Set(items)]
+}
+
+function parseSkills(lines) {
+  const groups = []
+  const ungrouped = []
+
+  lines.map(cleanLine).filter(Boolean).forEach((line) => {
+    const separatorIndex = line.indexOf(':')
+    if (separatorIndex > 0) {
+      const name = line.slice(0, separatorIndex).trim()
+      const values = splitValues(line.slice(separatorIndex + 1))
+      if (values.length > 0) {
+        groups.push({ name, values })
+      }
+    } else {
+      ungrouped.push(...splitValues(line))
+    }
+  })
+
+  const technicalValues = unique([
+    ...groups.flatMap((group) => group.values),
+    ...ungrouped,
+  ])
+  const groupedText = groups
+    .map((group) => `${group.name}: ${group.values.join(', ')}`)
+    .join('\n')
+  const toolValues = unique(groups
+    .filter((group) => /backend|infrastructure|design|strategy|tool|platform|cloud/i.test(group.name))
+    .flatMap((group) => group.values))
+  const softValues = unique(groups
+    .filter((group) => /soft|professional|leadership|communication/i.test(group.name))
+    .flatMap((group) => group.values))
+
+  return {
+    technicalSkills: technicalValues.join(', '),
+    tools: groupedText || toolValues.join(', '),
+    softSkills: softValues.join(', '),
+    groups,
+  }
+}
+
+function isStackLine(line) {
+  return /^stack\s*:/i.test(cleanLine(line))
+}
+
+function isProjectTitleLine(lines, index) {
+  const line = lines[index]
+  if (!line || isBulletLine(line) || isStackLine(line) || extractUrls(line).length > 0) {
+    return false
+  }
+
+  const cleaned = cleanLine(line)
+  const nextLine = lines[index + 1] || ''
+  return (
+    cleaned.length <= 180
+    && (
+      isStackLine(nextLine)
+      || /\b(?:launched|development|completed|ongoing|present)\b.*\b(?:19|20)\d{2}\b/i.test(cleaned)
+      || (index === 0 && !isBulletLine(nextLine))
+    )
+  )
+}
+
+function parseProjectTitle(line) {
+  const cleaned = cleanLine(line)
+  const dashMatch = cleaned.match(/^(.+?)\s+[—–]\s+(.+)$/)
+  if (dashMatch) {
+    return {
+      title: dashMatch[1].trim(),
+      description: dashMatch[2].trim(),
+    }
+  }
+
+  const pipeIndex = cleaned.indexOf('|')
+  if (pipeIndex > 0) {
+    return {
+      title: cleaned.slice(0, pipeIndex).trim(),
+      description: cleaned.slice(pipeIndex + 1).trim(),
+    }
+  }
+
+  return { title: cleaned, description: '' }
+}
+
+function parseStack(line) {
+  return cleanLine(line)
+    .replace(/^stack\s*:\s*/i, '')
+    .split(/\s*·\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(', ')
+}
+
+function parseProjects(lines) {
+  const projects = []
+  let current = null
+
+  function finishProject() {
+    if (!current) {
+      return
+    }
+    projects.push({
+      title: current.title,
+      description: current.description,
+      techStack: current.techStack,
+      highlights: current.highlights.join('\n'),
+      liveLink: current.liveLink,
+      githubLink: current.githubLink,
+    })
+    current = null
+  }
+
+  lines.forEach((line, index) => {
+    if (isProjectTitleLine(lines, index)) {
+      finishProject()
+      current = {
+        ...parseProjectTitle(line),
+        techStack: '',
+        highlights: [],
+        liveLink: '',
+        githubLink: '',
+      }
+      return
+    }
+
+    if (!current) {
+      return
+    }
+
+    if (isStackLine(line)) {
+      current.techStack = parseStack(line)
+      return
+    }
+
+    const urls = extractUrls(line)
+    const github = findUrl(urls, /(?:^|\/\/)(?:www\.)?github\.com\//i)
+    const liveLink = normalizeUrl(urls.find((url) => !/github\.com\//i.test(url)) || '')
+    if (github) {
+      current.githubLink = github
+    }
+    if (liveLink) {
+      current.liveLink = liveLink
+    }
+
+    const content = cleanLine(line)
+    if (!content || urls.length > 0) {
+      return
+    }
+
+    if (!isBulletLine(line) && current.highlights.length > 0) {
+      current.highlights[current.highlights.length - 1] = `${current.highlights.at(-1)} ${content}`
+    } else {
+      current.highlights.push(content)
+    }
+  })
+
+  finishProject()
+  return projects
+}
+
+function parseEducation(lines) {
+  const content = lines.map(cleanLine).filter(Boolean)
+  if (content.length === 0) {
     return []
   }
 
-  const lines = sectionText.split('\n').filter(Boolean)
-  const projectUrls = extractUrls(sectionText)
+  const degreeLine = content[0]
+  const institutionLine = content[1] || ''
+  const yearMatch = degreeLine.match(/\b((?:19|20)\d{2})\s*[–—-]\s*((?:19|20)\d{2})(?:\s*\(([^)]+)\))?/)
+  const cgpaMatch = content.join(' ').match(/\bCGPA\s*:\s*([^|·]+)/i)
+  const institutionParts = institutionLine
+    .replace(/\s*[·|]\s*CGPA\s*:.*$/i, '')
+    .split(/\s*,\s*/)
+
   return [{
-    title: getFirstContentLine(lines).slice(0, 100) || 'Resume Project',
-    techStack: extractTechnologies(sectionText).join(', '),
-    description: lines.slice(1).join('\n') || sectionText,
-    highlights: lines.slice(1).join('\n'),
-    githubLink: findUrl(projectUrls, /(?:^|\/\/)(?:www\.)?github\.com\//i),
-    liveLink: normalizeUrl(projectUrls.find((url) => (
-      !/(?:^|\/\/)(?:www\.)?github\.com\//i.test(url)
-    )) || ''),
-    sourceText: allText,
+    degree: degreeLine
+      .replace(/\s*\|\s*(?:19|20)\d{2}\s*[–—-]\s*(?:19|20)\d{2}.*$/i, '')
+      .trim(),
+    institution: institutionParts[0] || '',
+    location: institutionParts.slice(1).join(', ').trim(),
+    startYear: yearMatch?.[1] || '',
+    endYear: yearMatch
+      ? `${yearMatch[2]}${yearMatch[3] ? ` (${yearMatch[3]})` : ''}`
+      : '',
+    cgpa: cgpaMatch?.[1]?.trim() || '',
+  }]
+}
+
+function splitTitleAndIssuer(line) {
+  const cleaned = cleanLine(line)
+  const match = cleaned.match(/^(.+?)\s+(?:—|–|\|)\s+(.+)$/)
+    || cleaned.match(/^(.+?)\s+-\s+(.+)$/)
+  return {
+    title: match?.[1]?.trim() || cleaned,
+    issuer: match?.[2]?.trim() || '',
+  }
+}
+
+function parseCertifications(lines) {
+  return lines
+    .map(cleanLine)
+    .filter((line) => (
+      line
+      && !/^["“”'‘’]/.test(line)
+      && !/["“”'‘’]$/.test(line)
+    ))
+    .map((line) => {
+      const { title, issuer } = splitTitleAndIssuer(line)
+      const urls = extractUrls(line)
+      return {
+        title,
+        issuer,
+        year: line.match(/\b(?:19|20)\d{2}\b/)?.[0] || '',
+        link: normalizeUrl(urls[0] || ''),
+      }
+    })
+}
+
+function parseExperience(lines) {
+  const content = lines.map(cleanLine).filter(Boolean)
+  if (content.length === 0) {
+    return []
+  }
+
+  return [{
+    role: content[0],
+    company: content[1] || '',
+    responsibilities: content.slice(2).join('\n') || content.join('\n'),
   }]
 }
 
@@ -200,10 +428,9 @@ function getParsingConfidence(data, sections) {
     lines.some((line) => cleanLine(line))
   )).length
   const contactSignals = Object.values(data.personalDetails).filter(Boolean).length
-  const confidence = recognizedSections * 2 + Math.min(contactSignals, 3)
+  const confidence = recognizedSections * 2 + Math.min(contactSignals, 4)
 
   return {
-    confidence,
     partial: confidence < 5,
   }
 }
@@ -213,64 +440,30 @@ export function analyzeResumeText(text) {
   if (!cleanedText) {
     return {
       resumeData: normalizeResumeData(),
+      skillGroups: [],
       partial: true,
       warning: 'We could not fully understand this resume. Partial analysis is shown.',
     }
   }
 
   try {
-    const lines = cleanedText.split(/\n/).map((line) => line.trim()).filter(Boolean)
+    const lines = cleanedText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     const { sections, preamble } = splitIntoSections(lines)
-    const contact = extractContactDetails(cleanedText)
-    const summaryText = getSectionText(sections.summary)
-      || preamble
-        .map(cleanLine)
-        .filter((line) => (
-          line.length > 45
-          && !/@|https?:|www\.|\b\d{3}[-.\s]?\d{3}/i.test(line)
-        ))
-        .slice(0, 2)
-        .join(' ')
-    const skillsText = getSectionText(sections.skills)
-    const projectText = getSectionText(sections.projects)
-    const experienceText = getSectionText(sections.experience)
-    const educationText = getSectionText(sections.education)
-    const certificationText = getSectionText(sections.certifications)
-    const technologies = extractTechnologies(`${skillsText}\n${projectText}\n${cleanedText}`)
-
+    const skills = parseSkills(sections.skills)
     const resumeData = normalizeResumeData({
-      personalDetails: {
-        fullName: findName(lines),
-        email: contact.email,
-        phone: contact.phone,
-        linkedin: contact.linkedin,
-        github: contact.github,
-        portfolio: contact.portfolio,
-      },
-      summary: summaryText,
-      education: educationText ? [{
-        degree: getFirstContentLine(sections.education),
-        institution: sections.education.map(cleanLine).filter(Boolean).slice(1).join(' - '),
-      }] : [],
-      skills: {
-        technicalSkills: technologies.join(', '),
-        tools: skillsText,
-      },
-      projects: buildProject(projectText, cleanedText),
-      experience: experienceText ? [{
-        role: getFirstContentLine(sections.experience),
-        company: sections.experience.map(cleanLine).filter(Boolean)[1] || '',
-        responsibilities: experienceText,
-      }] : [],
-      certifications: certificationText ? [{
-        title: getFirstContentLine(sections.certifications),
-        issuer: sections.certifications.map(cleanLine).filter(Boolean).slice(1).join(' - '),
-      }] : [],
+      personalDetails: parseHeader(preamble, cleanedText),
+      summary: parseSummary(sections.summary),
+      education: parseEducation(sections.education),
+      skills,
+      projects: parseProjects(sections.projects),
+      experience: parseExperience(sections.experience),
+      certifications: parseCertifications(sections.certifications),
     })
     const confidence = getParsingConfidence(resumeData, sections)
 
     return {
       resumeData,
+      skillGroups: skills.groups,
       partial: confidence.partial,
       warning: confidence.partial
         ? 'We could not fully understand this resume. Partial analysis is shown.'
@@ -279,6 +472,7 @@ export function analyzeResumeText(text) {
   } catch {
     return {
       resumeData: normalizeResumeData(),
+      skillGroups: [],
       partial: true,
       warning: 'We could not fully understand this resume. Partial analysis is shown.',
     }

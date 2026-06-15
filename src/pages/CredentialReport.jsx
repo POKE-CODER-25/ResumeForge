@@ -301,14 +301,41 @@ function CredentialReport() {
 }
 
 function ParsedResumeSummary({ resumeData }) {
+  const personal = resumeData.personalDetails
   const sections = [
-    ['Name', resumeData.personalDetails.fullName],
+    ['Name', personal.fullName],
+    ['Target role', personal.targetRole],
+    ['Location', personal.location],
+    ['Links', [
+      personal.linkedin,
+      personal.github,
+      personal.portfolio,
+    ].filter(Boolean).join('\n')],
     ['Summary', resumeData.summary],
-    ['Education', resumeData.education.map((entry) => entry.degree || entry.institution).filter(Boolean).join(', ')],
-    ['Skills', resumeData.skills.technicalSkills || resumeData.skills.tools],
-    ['Projects', resumeData.projects.map((entry) => entry.title).filter(Boolean).join(', ')],
+    ['Education', resumeData.education.map((entry) => (
+      [
+        entry.degree,
+        entry.institution,
+        entry.location,
+        [entry.startYear, entry.endYear].filter(Boolean).join(' - '),
+        entry.cgpa && `CGPA: ${entry.cgpa}`,
+      ].filter(Boolean).join(' | ')
+    )).filter(Boolean).join('\n')],
+    ['Grouped skills', resumeData.skills.tools || resumeData.skills.technicalSkills],
+    ['Projects', resumeData.projects.map((entry) => (
+      [
+        entry.title,
+        entry.description,
+        entry.techStack && `Stack: ${entry.techStack}`,
+        entry.highlights,
+        entry.liveLink,
+        entry.githubLink,
+      ].filter(Boolean).join('\n')
+    )).filter(Boolean).join('\n\n')],
     ['Experience', resumeData.experience.map((entry) => entry.role || entry.company).filter(Boolean).join(', ')],
-    ['Certifications', resumeData.certifications.map((entry) => entry.title).filter(Boolean).join(', ')],
+    ['Certifications', resumeData.certifications.map((entry) => (
+      [entry.title, entry.issuer].filter(Boolean).join(' — ')
+    )).filter(Boolean).join('\n')],
   ]
 
   return (
