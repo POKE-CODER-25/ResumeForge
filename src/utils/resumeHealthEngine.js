@@ -1,36 +1,30 @@
 import { normalizeResumeData } from '../data/resumeData.js'
 
 const STRONG_TECHNOLOGIES = [
-  'react native',
-  'next.js',
-  'node.js',
-  'typescript',
-  'postgresql',
-  'javascript',
-  'firebase',
-  'mongodb',
-  'python',
-  'docker',
-  'flutter',
-  'react',
-  'aws',
+  'react native', 'next.js', 'node.js', 'typescript', 'postgresql',
+  'javascript', 'firebase', 'mongodb', 'python', 'docker', 'flutter',
+  'react', 'aws',
 ]
 
 const STRONG_ACTION_WORDS = [
-  'built',
-  'implemented',
-  'deployed',
-  'designed',
-  'developed',
-  'optimized',
-  'integrated',
-  'engineered',
+  'built', 'implemented', 'deployed', 'designed', 'developed',
+  'optimized', 'integrated', 'engineered', 'automated', 'launched',
+  'reduced', 'improved', 'increased', 'delivered',
 ]
 
 const WEAK_PHRASES = [
   'made website',
-  'worked on project',
+  'made a website',
   'created app',
+  'created an app',
+  'worked on project',
+  'worked on a project',
+  'did project',
+  'did a project',
+  'helped with',
+  'basic app',
+  'basic application',
+  'simple website',
 ]
 
 const SECTION_LABELS = {
@@ -61,12 +55,24 @@ function hasEntry(entries, fields) {
   return entries.some((entry) => fields.some((field) => hasText(entry[field])))
 }
 
-function clampScore(score) {
+function clampCategory(score) {
   return Math.max(0, Math.min(25, Math.round(score)))
 }
 
 function unique(items) {
   return [...new Set(items)]
+}
+
+function uniqueDoctorItems(items) {
+  const seen = new Set()
+  return items.filter((item) => {
+    const key = `${item.issue}|${item.section}|${item.originalText || ''}`
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
 }
 
 function parseSkills(data) {
@@ -85,7 +91,12 @@ function countTerms(text, terms) {
 }
 
 function containsMeasurableResult(text) {
-  return /\b\d+(?:\.\d+)?\s*(?:%|x|\+|users?|customers?|requests?|seconds?|ms|hours?|days?)?\b/i.test(text)
+  return /(?:\b\d[\d,]*(?:\.\d+)?\s*(?:%|x|\+|users?|customers?|requests?|downloads?|seconds?|ms|hours?|days?))|(?:\b(?:hundreds?|thousands?|millions?)\s+of\b)/i.test(text)
+}
+
+function containsTechnicalDetail(text) {
+  return /\b(?:api|database|authentication|authorization|responsive|real-time|cloud|frontend|backend|deployment|deployed|hosting|components?|testing|performance|sql|nosql)\b/i.test(text)
+    || countTerms(text, STRONG_TECHNOLOGIES) > 0
 }
 
 function adaptTextInput(text) {
@@ -113,7 +124,7 @@ function adaptInput(input) {
   }
 }
 
-function getSectionState(data) {
+function getSectionState(data, skills) {
   const personalFields = ['fullName', 'email', 'phone', 'location']
   const completedPersonalFields = personalFields.filter((field) => (
     hasText(data.personalDetails[field])
@@ -126,15 +137,15 @@ function getSectionState(data) {
     },
     summary: {
       present: hasText(data.summary),
-      completion: hasText(data.summary) ? Math.min(data.summary.trim().length / 120, 1) : 0,
+      completion: hasText(data.summary) ? Math.min(data.summary.trim().length / 100, 1) : 0,
     },
     education: {
       present: hasEntry(data.education, ['degree', 'institution']),
       completion: hasEntry(data.education, ['degree', 'institution']) ? 1 : 0,
     },
     skills: {
-      present: parseSkills(data).length > 0,
-      completion: Math.min(parseSkills(data).length / 5, 1),
+      present: skills.length > 0,
+      completion: Math.min(skills.length / 7, 1),
     },
     projects: {
       present: hasEntry(data.projects, ['title', 'description', 'highlights']),
@@ -152,7 +163,7 @@ function getSectionState(data) {
 }
 
 function scoreCompleteness(sectionState) {
-  return clampScore(
+  return clampCategory(
     Object.entries(SECTION_WEIGHTS).reduce((total, [section, weight]) => (
       total + (weight * sectionState[section].completion)
     ), 0),
@@ -164,127 +175,142 @@ function scoreTechnicalStrength(data, skills) {
   const modernTechnologyCount = STRONG_TECHNOLOGIES.filter((technology) => (
     searchableSkills.includes(technology)
   )).length
-  const skillBreadthScore = Math.min(skills.length, 10)
-  const modernStackScore = Math.min(modernTechnologyCount * 1.5, 9)
-  const githubScore = hasText(data.personalDetails.github) ? 3 : 0
-  const portfolioScore = hasText(data.personalDetails.portfolio) ? 3 : 0
+  const projectTechText = data.projects.map((project) => project.techStack).join(' ')
+  const projectTechnologyCount = countTerms(projectTechText, STRONG_TECHNOLOGIES)
 
   return {
-    score: clampScore(skillBreadthScore + modernStackScore + githubScore + portfolioScore),
+    score: clampCategory(
+      Math.min(skills.length, 8)
+      + Math.min(modernTechnologyCount * 1.2, 7)
+      + (hasText(data.personalDetails.github) ? 4 : 0)
+      + (hasText(data.personalDetails.portfolio) ? 3 : 0)
+      + Math.min(projectTechnologyCount, 3),
+    ),
     modernTechnologyCount,
+    projectTechnologyCount,
   }
 }
 
-function getImpactText(data) {
-  const projectText = data.projects.flatMap((project) => [
-    project.description,
-    project.highlights,
-  ])
-  const experienceText = data.experience.map((entry) => entry.responsibilities)
+function getWritingEntries(data) {
+  const projectEntries = data.projects.map((project, index) => ({
+    section: 'Projects',
+    label: project.title || `Project ${index + 1}`,
+    text: [project.description, project.highlights].filter(hasText).join('\n'),
+  }))
+  const experienceEntries = data.experience.map((entry, index) => ({
+    section: 'Experience',
+    label: entry.role || `Experience ${index + 1}`,
+    text: entry.responsibilities,
+  }))
 
-  return [...projectText, ...experienceText].filter(hasText).join('\n')
+  return [...projectEntries, ...experienceEntries].filter((entry) => hasText(entry.text))
 }
 
-function scoreImpactStrength(data) {
-  const impactText = getImpactText(data)
+function scoreImpactStrength(data, writingEntries) {
+  const impactText = writingEntries.map((entry) => entry.text).join('\n')
   if (!impactText) {
     return {
       score: 0,
-      hasWeakPhrase: false,
+      weakEntries: [],
       strongActionCount: 0,
-      hasMeasurableImpact: false,
+      measurableEntryCount: 0,
+      technicalEntryCount: 0,
     }
   }
 
+  const weakEntries = writingEntries.filter((entry) => countTerms(entry.text, WEAK_PHRASES) > 0)
   const strongActionCount = countTerms(impactText, STRONG_ACTION_WORDS)
-  const hasWeakPhrase = countTerms(impactText, WEAK_PHRASES) > 0
-  const hasMeasurableImpact = containsMeasurableResult(impactText)
-  const detailedDescriptionScore = Math.min(impactText.trim().length / 40, 8)
-  const actionWordScore = Math.min(strongActionCount * 3, 10)
-  const measurableScore = hasMeasurableImpact ? 5 : 0
-  const projectLinkScore = data.projects.some((project) => hasText(project.liveLink)) ? 2 : 0
-  const weakPhrasePenalty = hasWeakPhrase ? 4 : 0
+  const measurableEntryCount = writingEntries.filter((entry) => containsMeasurableResult(entry.text)).length
+  const technicalEntryCount = writingEntries.filter((entry) => containsTechnicalDetail(entry.text)).length
+  const detailedEntryCount = writingEntries.filter((entry) => entry.text.trim().length >= 70).length
+  const hasDeploymentLink = data.projects.some((project) => hasText(project.liveLink))
 
   return {
-    score: clampScore(
-      detailedDescriptionScore + actionWordScore + measurableScore
-      + projectLinkScore - weakPhrasePenalty,
+    score: clampCategory(
+      Math.min(strongActionCount * 1.5, 7)
+      + Math.min(detailedEntryCount * 2, 4)
+      + Math.min(measurableEntryCount * 4, 7)
+      + Math.min(technicalEntryCount * 1.5, 4)
+      + (hasDeploymentLink ? 3 : 0)
+      - Math.min(weakEntries.length * 3, 6),
     ),
-    hasWeakPhrase,
+    weakEntries,
     strongActionCount,
-    hasMeasurableImpact,
+    measurableEntryCount,
+    technicalEntryCount,
   }
 }
 
 function scoreProfessionalReadiness(data, sectionState) {
-  const checks = [
-    hasText(data.personalDetails.linkedin),
-    hasText(data.personalDetails.github),
-    hasText(data.personalDetails.portfolio),
-    sectionState.certifications.present,
-    sectionState.experience.present,
-  ]
-
-  return checks.filter(Boolean).length * 5
+  return clampCategory(
+    (hasText(data.personalDetails.linkedin) ? 4 : 0)
+    + (hasText(data.personalDetails.github) ? 5 : 0)
+    + (hasText(data.personalDetails.portfolio) ? 5 : 0)
+    + (sectionState.certifications.present ? 5 : 0)
+    + (sectionState.experience.present ? 6 : 0),
+  )
 }
 
-function buildFeedback(data, sectionState, skills, technical, impact) {
+function buildFeedback(data, sectionState, skills, technical, impact, writingEntries) {
   const strengths = []
   const weaknesses = []
   const recommendations = []
 
-  if (skills.length >= 6 && technical.modernTechnologyCount >= 2) {
+  if (skills.length >= 7 && technical.modernTechnologyCount >= 3) {
     strengths.push('Strong technical stack with relevant modern technologies')
   } else if (skills.length > 0) {
     strengths.push('Technical skills section is present')
   }
-
   if (data.projects.filter((project) => hasText(project.title)).length >= 2) {
     strengths.push('Multiple projects demonstrate practical experience')
   } else if (sectionState.projects.present) {
     strengths.push('A project is included to demonstrate applied skills')
   }
-
   if (hasText(data.personalDetails.portfolio)) {
     strengths.push('Portfolio is available for recruiters')
   }
   if (hasText(data.personalDetails.github)) {
     strengths.push('GitHub profile supports technical credibility')
   }
-  if (impact.strongActionCount >= 3) {
+  if (impact.strongActionCount >= 4) {
     strengths.push('Descriptions use strong action-oriented language')
   }
-  if (impact.hasMeasurableImpact) {
+  if (impact.measurableEntryCount > 0) {
     strengths.push('Achievements include measurable results')
   }
 
   if (!sectionState.summary.present) {
     weaknesses.push('Missing professional summary')
-  } else if (data.summary.trim().length < 60) {
+  } else if (data.summary.trim().length < 70) {
     weaknesses.push('Professional summary is too brief')
   }
-
   if (!sectionState.certifications.present) {
     weaknesses.push('Missing certifications')
   }
   if (!sectionState.experience.present) {
     weaknesses.push('Limited experience section')
   }
-  if (sectionState.projects.present && (impact.strongActionCount < 2 || impact.hasWeakPhrase)) {
+  if (impact.weakEntries.length > 0 || (sectionState.projects.present && impact.strongActionCount < 2)) {
     weaknesses.push('Project descriptions need stronger action language')
   }
-  if (getImpactText(data) && !impact.hasMeasurableImpact) {
+  if (writingEntries.length > 0 && impact.measurableEntryCount === 0) {
     weaknesses.push('Achievements lack measurable results')
   }
-  if (skills.length < 5) {
+  if (skills.length < 6) {
     weaknesses.push('Technical skills coverage is limited')
   }
   if (!hasText(data.personalDetails.linkedin)) {
     weaknesses.push('LinkedIn profile is not included')
   }
+  if (!hasText(data.personalDetails.github)) {
+    weaknesses.push('GitHub profile is not included')
+  }
+  if (!hasText(data.personalDetails.portfolio)) {
+    weaknesses.push('Portfolio is not included')
+  }
 
-  if (!impact.hasMeasurableImpact && getImpactText(data)) {
-    recommendations.push('Add measurable achievements such as percentages, users, or time saved')
+  if (writingEntries.length > 0 && impact.measurableEntryCount === 0) {
+    recommendations.push('Add measurable achievements such as users served, performance gains, or time saved')
   }
   if (sectionState.projects.present && !data.projects.some((project) => hasText(project.liveLink))) {
     recommendations.push('Add deployment links for completed projects')
@@ -292,11 +318,14 @@ function buildFeedback(data, sectionState, skills, technical, impact) {
   if (impact.strongActionCount < 2 && sectionState.projects.present) {
     recommendations.push('Start project bullets with strong verbs such as built, implemented, or deployed')
   }
+  if (impact.technicalEntryCount === 0 && writingEntries.length > 0) {
+    recommendations.push('Name the technologies, APIs, databases, and authentication used in each project')
+  }
   if (!sectionState.certifications.present) {
     recommendations.push('Add relevant certifications or verified professional courses')
   }
   if (!hasText(data.personalDetails.portfolio)) {
-    recommendations.push('Add a portfolio link that showcases your best work')
+    recommendations.push('Add a portfolio link that showcases live work and case studies')
   }
   if (!sectionState.summary.present) {
     recommendations.push('Write a concise professional summary tailored to your target role')
@@ -313,77 +342,207 @@ function buildFeedback(data, sectionState, skills, technical, impact) {
   }
 }
 
-function buildDoctorSuggestions(data, weaknesses, skills) {
-  const technologyExamples = skills.slice(0, 3).join(', ') || 'React, Firebase, and modern development tools'
+function createDoctorItem({
+  issue,
+  whyItMatters,
+  improvedText,
+  section,
+  priority,
+  originalText,
+}) {
+  return {
+    issue,
+    whyItMatters,
+    ...(hasText(originalText) ? { originalText: originalText.trim() } : {}),
+    improvedText,
+    section,
+    priority,
+  }
+}
+
+function buildImprovedWriting(entry, skills) {
+  const technologyText = skills.slice(0, 3).join(', ')
+  const technologyClause = technologyText
+    ? ` using ${technologyText}`
+    : ''
+
+  if (entry.section === 'Experience') {
+    return `Implemented a production-focused solution${technologyClause}, improving a defined workflow and supporting measurable outcomes for users or the business.`
+  }
+
+  return `Built and deployed a responsive web application${technologyClause} with reusable components, structured data handling, and a clear real-world purpose.`
+}
+
+function buildResumeDoctor(data, sectionState, skills, impact, writingEntries) {
+  const doctorItems = []
+  const technologyExamples = skills.slice(0, 4).join(', ') || 'modern development tools'
   const targetRole = data.personalDetails.targetRole.trim() || 'software developer'
+  const projectNames = data.projects
+    .map((project) => project.title.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(' and ')
+  const projectContext = projectNames ? ` through projects such as ${projectNames}` : ''
 
-  return weaknesses.map((weakness) => {
-    if (weakness === 'Missing professional summary' || weakness === 'Professional summary is too brief') {
-      return {
-        weakness,
-        suggestion: `Add: "Passionate ${targetRole} experienced in building reliable applications using ${technologyExamples}, with a focus on clean user experiences and measurable results."`,
-      }
-    }
+  if (!sectionState.summary.present || data.summary.trim().length < 70) {
+    doctorItems.push(createDoctorItem({
+      issue: sectionState.summary.present ? 'Professional summary is too brief' : 'Professional summary is missing',
+      whyItMatters: 'Recruiters use the opening summary to understand your role, technical focus, and value within a few seconds.',
+      originalText: data.summary,
+      improvedText: `${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)} with hands-on experience building reliable applications using ${technologyExamples}${projectContext}. Focused on clean implementation, practical problem-solving, and delivering measurable user and business outcomes.`,
+      section: 'Professional Summary',
+      priority: 'high',
+    }))
+  }
 
-    if (weakness === 'Project descriptions need stronger action language') {
-      return {
-        weakness,
-        suggestion: 'Replace "Made a website" with "Built and deployed a responsive web application using React and Firebase with real-time data synchronization."',
-      }
-    }
+  if (!hasText(data.personalDetails.github)) {
+    doctorItems.push(createDoctorItem({
+      issue: 'GitHub profile is missing',
+      whyItMatters: 'A GitHub profile gives technical recruiters evidence of code quality, consistency, documentation, and project ownership.',
+      improvedText: 'Add your GitHub profile URL and pin 3-5 relevant repositories with clear README files, setup instructions, screenshots, and live links.',
+      section: 'Personal Details',
+      priority: 'high',
+    }))
+  }
 
-    if (weakness === 'Achievements lack measurable results') {
-      return {
-        weakness,
-        suggestion: 'Add the scale and outcome: "Optimized API requests to reduce page load time by 35% and improve the experience for 1,000+ users."',
-      }
-    }
+  if (!hasText(data.personalDetails.portfolio)) {
+    doctorItems.push(createDoctorItem({
+      issue: 'Portfolio link is missing',
+      whyItMatters: 'A portfolio helps recruiters verify live work quickly and understand the problem, process, stack, and outcome behind each project.',
+      improvedText: 'Add a portfolio with 2-4 focused case studies showing the project purpose, your contribution, technologies used, screenshots, source code, and deployment.',
+      section: 'Personal Details',
+      priority: 'medium',
+    }))
+  }
 
-    if (weakness === 'Missing certifications') {
-      return {
-        weakness,
-        suggestion: 'Add relevant verified credentials with the issuer, completion year, and credential link.',
-      }
-    }
+  if (!sectionState.certifications.present) {
+    doctorItems.push(createDoctorItem({
+      issue: 'Certifications or learning proof are missing',
+      whyItMatters: 'Verified learning can strengthen an early-career resume when professional experience is limited and shows continued skill development.',
+      improvedText: 'Add role-relevant certifications, verified courses, technical workshops, or learning credentials with the issuer, completion year, and credential URL.',
+      section: 'Certifications',
+      priority: sectionState.experience.present ? 'low' : 'medium',
+    }))
+  }
 
-    if (weakness === 'Limited experience section') {
-      return {
-        weakness,
-        suggestion: 'Include internships, freelance work, volunteering, or substantial project roles and describe the outcomes you owned.',
-      }
-    }
-
-    if (weakness === 'Technical skills coverage is limited') {
-      return {
-        weakness,
-        suggestion: 'List languages, frameworks, databases, cloud platforms, and developer tools you can use confidently.',
-      }
-    }
-
-    return {
-      weakness,
-      suggestion: 'Add a complete LinkedIn URL and ensure the profile headline matches your target role.',
-    }
+  impact.weakEntries.forEach((entry) => {
+    doctorItems.push(createDoctorItem({
+      issue: `Weak wording in ${entry.label}`,
+      whyItMatters: 'Generic phrases describe activity but do not communicate ownership, technical depth, or the result of the work.',
+      originalText: entry.text,
+      improvedText: buildImprovedWriting(entry, skills),
+      section: entry.section,
+      priority: 'high',
+    }))
   })
+
+  writingEntries
+    .filter((entry) => !containsMeasurableResult(entry.text))
+    .slice(0, 3)
+    .forEach((entry) => {
+      doctorItems.push(createDoctorItem({
+        issue: `No measurable outcome in ${entry.label}`,
+        whyItMatters: 'Metrics show scale and make your contribution credible by connecting technical work to a visible result.',
+        originalText: entry.text,
+        improvedText: `${buildImprovedWriting(entry, skills)} Add a verified result, for example: served 500+ users, reduced load time by 30%, automated 5 hours of weekly work, or deployed the product publicly.`,
+        section: entry.section,
+        priority: 'high',
+      }))
+    })
+
+  if (writingEntries.length > 0 && impact.technicalEntryCount === 0) {
+    doctorItems.push(createDoctorItem({
+      issue: 'Project and experience details lack technical depth',
+      whyItMatters: 'Naming implementation details helps reviewers understand what you can build rather than only what the product does.',
+      improvedText: 'Add the technologies used, authentication approach, database, APIs, deployment status, performance work, and the real-world purpose to each relevant bullet.',
+      section: sectionState.projects.present ? 'Projects' : 'Experience',
+      priority: 'medium',
+    }))
+  }
+
+  if (!sectionState.experience.present) {
+    doctorItems.push(createDoctorItem({
+      issue: 'Experience section is missing',
+      whyItMatters: 'Recruiters look for evidence that you applied skills with ownership, deadlines, collaboration, or real users.',
+      improvedText: 'Include internships, freelance work, volunteering, campus roles, open-source contributions, or substantial project leadership. Describe what you owned, how you built it, and the result.',
+      section: 'Experience',
+      priority: sectionState.projects.present ? 'medium' : 'high',
+    }))
+  }
+
+  return uniqueDoctorItems(doctorItems)
+}
+
+function calibrateOverallScore(rawScore, data, sectionState, skills, technical, impact) {
+  const presentSectionCount = Object.values(sectionState).filter((section) => section.present).length
+  const hasStrongSkills = skills.length >= 7 && technical.modernTechnologyCount >= 3
+  const hasStrongProjects = sectionState.projects.present
+    && impact.strongActionCount >= 2
+    && impact.technicalEntryCount > 0
+  const hasClearSummary = data.summary.trim().length >= 70
+  const hasTechnicalOrMeasuredImpact = impact.measurableEntryCount > 0
+    || (impact.technicalEntryCount >= 2 && impact.strongActionCount >= 3)
+  const hasCredentialOrExperience = sectionState.certifications.present
+    || sectionState.experience.present
+  const premiumSignals = [
+    hasStrongSkills,
+    hasStrongProjects,
+    hasText(data.personalDetails.github),
+    hasText(data.personalDetails.portfolio),
+    hasClearSummary,
+    hasTechnicalOrMeasuredImpact,
+    hasCredentialOrExperience,
+  ]
+
+  let ceiling = 100
+  if (presentSectionCount <= 2) {
+    ceiling = 25
+  } else if (presentSectionCount <= 3) {
+    ceiling = 45
+  } else if (!sectionState.projects.present && !sectionState.experience.present) {
+    ceiling = 60
+  } else if (!premiumSignals.every(Boolean)) {
+    ceiling = 85
+  }
+
+  const calibratedScore = presentSectionCount >= 4 && rawScore > 0
+    ? Math.max(20, rawScore)
+    : rawScore
+
+  return Math.max(0, Math.min(100, ceiling, Math.round(calibratedScore)))
 }
 
 export function analyzeResumeHealth(input) {
   const data = adaptInput(input)
-  const sectionState = getSectionState(data)
   const skills = parseSkills(data)
+  const sectionState = getSectionState(data, skills)
+  const writingEntries = getWritingEntries(data)
   const sectionCompletenessScore = scoreCompleteness(sectionState)
   const technical = scoreTechnicalStrength(data, skills)
-  const impact = scoreImpactStrength(data)
+  const impact = scoreImpactStrength(data, writingEntries)
   const professionalReadinessScore = scoreProfessionalReadiness(data, sectionState)
-  const feedback = buildFeedback(data, sectionState, skills, technical, impact)
+  const feedback = buildFeedback(data, sectionState, skills, technical, impact, writingEntries)
   const missingSections = Object.entries(sectionState)
     .filter(([, state]) => !state.present)
     .map(([section]) => SECTION_LABELS[section])
-  const overallScore = (
-    sectionCompletenessScore
+  const rawScore = sectionCompletenessScore
     + technical.score
     + impact.score
     + professionalReadinessScore
+  const overallScore = calibrateOverallScore(
+    rawScore,
+    data,
+    sectionState,
+    skills,
+    technical,
+    impact,
+  )
+  const resumeDoctor = buildResumeDoctor(
+    data,
+    sectionState,
+    skills,
+    impact,
+    writingEntries,
   )
 
   return {
@@ -396,7 +555,8 @@ export function analyzeResumeHealth(input) {
     weaknesses: feedback.weaknesses,
     missingSections,
     recommendations: feedback.recommendations,
-    doctorSuggestions: buildDoctorSuggestions(data, feedback.weaknesses, skills),
+    resumeDoctor,
+    doctorSuggestions: resumeDoctor,
   }
 }
 

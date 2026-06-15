@@ -40,6 +40,32 @@ function FeedbackCard({ title, icon, tone, items, emptyMessage }) {
   )
 }
 
+function DoctorCard({ item }) {
+  return (
+    <article className="doctor-suggestion">
+      <div className="doctor-card-top">
+        <span className={`priority-badge ${item.priority}`}>{item.priority} priority</span>
+        <span className="doctor-section">{item.section}</span>
+      </div>
+      <h3>{item.issue}</h3>
+      <div className="doctor-reason">
+        <strong>Why it matters</strong>
+        <p>{item.whyItMatters}</p>
+      </div>
+      {item.originalText && (
+        <div className="doctor-original">
+          <strong>Current version</strong>
+          <p>{item.originalText}</p>
+        </div>
+      )}
+      <div className="doctor-improvement">
+        <strong>Suggested improvement</strong>
+        <p>{item.improvedText}</p>
+      </div>
+    </article>
+  )
+}
+
 function CredentialReport() {
   const report = analyzeResumeHealth(loadResumeData())
   const scoreStatus = getScoreStatus(report.overallScore)
@@ -98,20 +124,20 @@ function CredentialReport() {
 
         <section className="doctor-panel">
           <div className="doctor-panel-heading">
-            <span className="report-icon"><Icon name="sparkle" size={20} /></span>
+            <span className="doctor-panel-icon"><Icon name="document" size={21} /></span>
             <div>
               <span className="status-label">Resume Doctor</span>
-              <h2>Practical fixes for your weakest areas</h2>
-              <p>Deterministic suggestions based on the content in your Builder.</p>
+              <h2>Turn weak content into recruiter-ready evidence</h2>
+              <p>Prioritized, deterministic improvements based on the exact content in your Builder.</p>
             </div>
           </div>
-          {report.doctorSuggestions.length > 0 ? (
+          {report.resumeDoctor.length > 0 ? (
             <div className="doctor-suggestion-list">
-              {report.doctorSuggestions.map((item) => (
-                <article className="doctor-suggestion" key={item.weakness}>
-                  <strong>{item.weakness}</strong>
-                  <p>{item.suggestion}</p>
-                </article>
+              {report.resumeDoctor.map((item, index) => (
+                <DoctorCard
+                  item={item}
+                  key={`${item.issue}-${item.section}-${index}`}
+                />
               ))}
             </div>
           ) : (
