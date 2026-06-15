@@ -5,8 +5,8 @@ const SECTION_ALIASES = {
   education: ['education', 'academic background', 'academics', 'qualifications'],
   skills: ['skills', 'technical skills', 'core skills', 'technologies', 'tech stack', 'competencies'],
   projects: ['projects', 'personal projects', 'academic projects', 'selected projects', 'project experience'],
-  experience: ['experience', 'work experience', 'professional experience', 'employment', 'internships', 'internship experience'],
-  certifications: ['certifications', 'certificates', 'licenses', 'courses', 'credentials', 'achievements'],
+  experience: ['experience', 'work experience', 'professional experience', 'employment', 'internship', 'internships', 'internship experience'],
+  certifications: ['certification', 'certifications', 'certificate', 'certificates', 'licenses', 'course', 'courses', 'certificates & courses', 'credentials', 'achievements'],
 }
 
 const ROLE_WORDS = /\b(?:developer|engineer|designer|architect|analyst|manager|builder|specialist|consultant|scientist|strategist|product|frontend|backend|full[- ]?stack|data|ai|creative|systems?)\b/i
@@ -46,6 +46,10 @@ function identifyHeading(line) {
         inlineText: cleanLine(line).slice(prefix.length).trim(),
       }
     }
+  }
+
+  if (/^(?:certifications?|certificates?|courses?)(?:\s*(?:&|and)\s*(?:certifications?|certificates?|courses?))?$/.test(normalized)) {
+    return { section: 'certifications', inlineText: '' }
   }
 
   return null
@@ -124,6 +128,11 @@ function splitIntoSections(lines) {
   let currentSection = ''
 
   lines.forEach((line) => {
+    if (currentSection === 'projects' && isStackLine(line)) {
+      sections.projects.push(line)
+      return
+    }
+
     const heading = identifyHeading(line)
     if (heading) {
       currentSection = heading.section
@@ -234,7 +243,7 @@ function parseSkills(lines) {
 }
 
 function isStackLine(line) {
-  return /^stack\s*:/i.test(cleanLine(line))
+  return /^(?:stack|tech stack|technologies|built with)\s*:/i.test(cleanLine(line))
 }
 
 function isProjectTitleLine(lines, index) {
@@ -249,7 +258,13 @@ function isProjectTitleLine(lines, index) {
     cleaned.length <= 180
     && (
       isStackLine(nextLine)
+      || (
+        isBulletLine(nextLine)
+        && cleaned.length <= 120
+        && !/[.;]$/.test(cleaned)
+      )
       || /\b(?:launched|development|completed|ongoing|present)\b.*\b(?:19|20)\d{2}\b/i.test(cleaned)
+      || /(?:—|–|\s-\s|\||:).*\b(?:app|platform|system|website|dashboard|tool|game|project|launched|development|completed|ongoing|present|(?:19|20)\d{2})\b/i.test(cleaned)
       || (index === 0 && !isBulletLine(nextLine))
     )
   )
@@ -273,12 +288,28 @@ function parseProjectTitle(line) {
     }
   }
 
+  const hyphenMatch = cleaned.match(/^(.+?)\s+-\s+(.+)$/)
+  if (hyphenMatch) {
+    return {
+      title: hyphenMatch[1].trim(),
+      description: hyphenMatch[2].trim(),
+    }
+  }
+
+  const colonIndex = cleaned.indexOf(':')
+  if (colonIndex > 0) {
+    return {
+      title: cleaned.slice(0, colonIndex).trim(),
+      description: cleaned.slice(colonIndex + 1).trim(),
+    }
+  }
+
   return { title: cleaned, description: '' }
 }
 
 function parseStack(line) {
   return cleanLine(line)
-    .replace(/^stack\s*:\s*/i, '')
+    .replace(/^(?:stack|tech stack|technologies|built with)\s*:\s*/i, '')
     .split(/\s*·\s*/)
     .map((item) => item.trim())
     .filter(Boolean)
@@ -384,6 +415,7 @@ function splitTitleAndIssuer(line) {
   const cleaned = cleanLine(line)
   const match = cleaned.match(/^(.+?)\s+(?:—|–|\|)\s+(.+)$/)
     || cleaned.match(/^(.+?)\s+-\s+(.+)$/)
+    || cleaned.match(/^(.+?)\s+(?:by|from)\s+(.+)$/i)
   return {
     title: match?.[1]?.trim() || cleaned,
     issuer: match?.[2]?.trim() || '',

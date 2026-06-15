@@ -2,23 +2,28 @@ import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
 import ResumePreview from '../components/ResumePreview'
+import {
+  ACTIVE_RESUME_CHANGED_EVENT,
+  getActiveResumeData,
+} from '../data/activeResumeData'
 import { downloadFormats } from '../data/appData'
 import {
   RESUME_WORKFLOW_CLEARED_EVENT,
-  resolveActiveEditableResume,
 } from '../data/uploadedResumeData'
 
 function Download() {
-  const [activeResume, setActiveResume] = useState(resolveActiveEditableResume)
+  const [activeResume, setActiveResume] = useState(getActiveResumeData)
 
   useEffect(() => {
     function handleWorkflowCleared() {
-      setActiveResume(resolveActiveEditableResume())
+      setActiveResume(getActiveResumeData())
     }
 
     window.addEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    window.addEventListener(ACTIVE_RESUME_CHANGED_EVENT, handleWorkflowCleared)
     return () => {
       window.removeEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+      window.removeEventListener(ACTIVE_RESUME_CHANGED_EVENT, handleWorkflowCleared)
     }
   }, [])
 
@@ -31,8 +36,8 @@ function Download() {
           description="Choose the format that fits your application workflow. Download functionality will be enabled in a future release."
         />
         <div className="workspace-source-row">
-          <span className={`analysis-source ${activeResume.source.startsWith('Uploaded') ? 'uploaded' : ''}`}>
-            {activeResume.source}
+          <span className={`analysis-source ${activeResume.source.includes('uploaded') ? 'uploaded' : ''}`}>
+            {activeResume.sourceLabel}
           </span>
           {activeResume.uploadedResume && !activeResume.uploadedResume.importedForEditing && (
             <span className="analysis-source uploaded">Uploaded Resume Analysis Available</span>

@@ -3,7 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
 import ResumeUpload from '../components/ResumeUpload'
-import { loadResumeData, saveResumeData } from '../data/resumeData'
+import {
+  ACTIVE_RESUME_CHANGED_EVENT,
+  getActiveResumeData,
+  saveActiveResumeData,
+} from '../data/activeResumeData'
+import { saveResumeData } from '../data/resumeData'
 import {
   clearUploadedResumeWorkflow,
   loadUploadedResumeData,
@@ -79,7 +84,12 @@ function DoctorCard({ item }) {
 
 function CredentialReport() {
   const navigate = useNavigate()
-  const [builderData, setBuilderData] = useState(loadResumeData)
+  const [activeAnalysis, setActiveAnalysis] = useState(() => (
+    getActiveResumeData({
+      includeUploadedAnalysis: true,
+      preferUploadedAnalysis: true,
+    })
+  ))
   const [uploadedResume, setUploadedResume] = useState(loadUploadedResumeData)
   const [uploadedFile, setUploadedFile] = useState(() => {
     const stored = loadUploadedResumeData()
@@ -91,18 +101,19 @@ function CredentialReport() {
   ))
   const [isProcessing, setIsProcessing] = useState(false)
   const [showUploadedPreview, setShowUploadedPreview] = useState(false)
-  const isUploadedSource = uploadedResume !== null
-  const report = isUploadedSource
-    ? uploadedResume.healthReport || analyzeResumeHealth(uploadedResume.parsedResume)
-    : analyzeResumeHealth(builderData)
+  const isUploadedSource = activeAnalysis.source === 'uploaded-analysis'
+    || activeAnalysis.source === 'uploaded-import'
+  const report = analyzeResumeHealth(activeAnalysis.resumeData)
   const scoreStatus = getScoreStatus(report.overallScore)
-  const sourceLabel = isUploadedSource
-    ? 'Uploaded Resume Analysis'
-    : 'Resume Builder Data'
+  const sourceLabel = activeAnalysis.source === 'editor-approved'
+    ? 'Analyzing Editor-Approved Resume'
+    : isUploadedSource
+      ? 'Analyzing Uploaded Resume'
+      : 'Analyzing Builder Resume'
 
   useEffect(() => {
     function handleWorkflowCleared() {
-      setBuilderData(loadResumeData())
+      setActiveAnalysis(getActiveResumeData({ includeUploadedAnalysis: true }))
       setUploadedFile(null)
       setUploadedResume(null)
       setUploadError('')
@@ -112,8 +123,10 @@ function CredentialReport() {
     }
 
     window.addEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+    window.addEventListener(ACTIVE_RESUME_CHANGED_EVENT, handleWorkflowCleared)
     return () => {
       window.removeEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
+      window.removeEventListener(ACTIVE_RESUME_CHANGED_EVENT, handleWorkflowCleared)
     }
   }, [])
 
@@ -144,6 +157,12 @@ function CredentialReport() {
       }
       saveUploadedResumeData(storedUpload)
       setUploadedResume(loadUploadedResumeData() || storedUpload)
+      setActiveAnalysis({
+        resumeData: analysis.resumeData,
+        source: 'uploaded-analysis',
+        sourceLabel: 'Uploaded Resume',
+        uploadedResume: storedUpload,
+      })
       setUploadWarning(analysis.warning)
     } catch {
       setUploadedFile(uploadedResume ? { name: uploadedResume.filename } : null)
@@ -168,6 +187,7 @@ function CredentialReport() {
     if (importedUpload) {
       setUploadedResume(importedUpload)
     }
+    saveActiveResumeData(uploadedResume.parsedResume, 'uploaded-import')
     navigate('/builder', {
       state: { importedResume: true },
     })
@@ -236,7 +256,7 @@ function CredentialReport() {
               <div className="analysis-labels">
                 <span className="status-label">{scoreStatus.label}</span>
                 <span className={`analysis-source ${isUploadedSource ? 'uploaded' : ''}`}>
-                  Analysis Source: {sourceLabel}
+                  {sourceLabel}
                 </span>
               </div>
               <h2>{scoreStatus.title}</h2>

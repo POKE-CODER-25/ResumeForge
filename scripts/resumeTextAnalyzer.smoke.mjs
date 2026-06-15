@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { analyzeResumeText } from '../src/utils/resumeTextAnalyzer.js'
+import { normalizeResumeData } from '../src/data/resumeData.js'
 
 const sampleResume = `R. Pruthvi Adithya Raj
 AI Product Builder · Generative AI Developer · Creative Systems Designer
@@ -59,5 +60,42 @@ assert.deepEqual(
   resumeData.projects.map((project) => project.highlights.split('\n').length),
   [4, 2, 2],
 )
+
+const secondSample = `Jordan Taylor
+Full Stack Developer
+jordan@example.com | github.com/jordan | linkedin.com/in/jordan | jordan.vercel.app
+Austin, Texas
+PROFILE
+Developer focused on reliable web products.
+ACADEMIC PROJECTS
+Inventory Dashboard
+Tech Stack: React, Node.js, PostgreSQL
+• Built inventory workflows for local retailers.
+• Reduced manual updates by 30%.
+Weather API Tool - Deployed 2025
+Built With: Python | Flask
+weather-tool.vercel.app | github.com/jordan/weather-tool
+• Integrated external weather APIs.
+• Deployed the service for public use.
+CERTIFICATES & COURSES
+AWS Cloud Practitioner by Amazon Web Services
+Advanced React | Coursera`
+
+const secondResult = analyzeResumeText(secondSample).resumeData
+const builderSynced = normalizeResumeData(
+  JSON.parse(JSON.stringify(secondResult)),
+)
+
+assert.equal(secondResult.projects.length, 2)
+assert.equal(secondResult.certifications.length, 2)
+assert.equal(secondResult.projects[1].liveLink, 'https://weather-tool.vercel.app')
+assert.equal(
+  secondResult.projects[1].githubLink,
+  'https://github.com/jordan/weather-tool',
+)
+assert.equal(secondResult.certifications[0].issuer, 'Amazon Web Services')
+assert.equal(secondResult.certifications[1].issuer, 'Coursera')
+assert.equal(builderSynced.projects.length, 2)
+assert.equal(builderSynced.certifications.length, 2)
 
 console.log('Resume text analyzer smoke test passed.')

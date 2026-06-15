@@ -1,6 +1,5 @@
 import {
   clearResumeData,
-  loadResumeData,
   normalizeResumeData,
 } from './resumeData.js'
 
@@ -14,6 +13,8 @@ const LEGACY_UPLOADED_RESUME_KEYS = [
   'resumeforge.uploadedResumeFilename',
   'resumeforge.uploadedResumeSource',
   'resumeforge.importedResume',
+  'resumeforge.editorReview.v1',
+  'resumeforge.activeResume.v1',
 ]
 
 function canUseLocalStorage() {
@@ -166,31 +167,4 @@ export function clearUploadedResumeWorkflow() {
   }
 
   return cleared
-}
-
-export function getActiveResumeSource() {
-  const uploaded = loadUploadedResumeData()
-  if (uploaded?.importedForEditing) {
-    return 'Uploaded Resume Imported for Editing'
-  }
-  return 'Resume Builder Data'
-}
-
-export function resolveActiveEditableResume() {
-  const builderData = loadResumeData()
-  const uploaded = loadUploadedResumeData()
-
-  if (uploaded?.importedForEditing) {
-    return {
-      resumeData: builderData,
-      source: 'Uploaded Resume Imported for Editing',
-      uploadedResume: uploaded,
-    }
-  }
-
-  return {
-    resumeData: builderData,
-    source: 'Resume Builder Data',
-    uploadedResume: uploaded,
-  }
 }

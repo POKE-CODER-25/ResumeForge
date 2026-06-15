@@ -5,6 +5,10 @@ import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
 import ResumePreview from '../components/ResumePreview'
 import {
+  getActiveResumeData,
+  saveActiveResumeData,
+} from '../data/activeResumeData'
+import {
   clearResumeData,
   createResumeEntry,
   getResumeCompletion,
@@ -12,10 +16,7 @@ import {
   normalizeResumeData,
   saveResumeData,
 } from '../data/resumeData'
-import {
-  RESUME_WORKFLOW_CLEARED_EVENT,
-  resolveActiveEditableResume,
-} from '../data/uploadedResumeData'
+import { RESUME_WORKFLOW_CLEARED_EVENT } from '../data/uploadedResumeData'
 
 const repeatableSections = {
   education: {
@@ -59,17 +60,25 @@ function SectionHeader({ icon = 'file', title = '', description = '' }) {
 
 function Builder() {
   const location = useLocation()
-  const [activeSource, setActiveSource] = useState(resolveActiveEditableResume)
+  const [activeSource, setActiveSource] = useState(getActiveResumeData)
   const [resumeData, setResumeData] = useState(() => activeSource.resumeData || loadResumeData())
   const completion = getResumeCompletion(resumeData)
 
   useEffect(() => {
     saveResumeData(resumeData)
-  }, [resumeData])
+    saveActiveResumeData(
+      resumeData,
+      activeSource.source === 'uploaded-import'
+        ? 'uploaded-import'
+        : activeSource.source === 'editor-approved'
+          ? 'editor-approved'
+          : 'builder',
+    )
+  }, [resumeData, activeSource.source])
 
   useEffect(() => {
     function handleWorkflowCleared() {
-      const nextSource = resolveActiveEditableResume()
+      const nextSource = getActiveResumeData()
       setActiveSource(nextSource)
       setResumeData(nextSource.resumeData)
     }
@@ -172,8 +181,8 @@ function Builder() {
         )}
 
         <div className="workspace-source-row">
-          <span className={`analysis-source ${activeSource.source.startsWith('Uploaded') ? 'uploaded' : ''}`}>
-            {activeSource.source}
+          <span className={`analysis-source ${activeSource.source.includes('uploaded') ? 'uploaded' : ''}`}>
+            {activeSource.sourceLabel}
           </span>
           {activeSource.uploadedResume && !activeSource.uploadedResume.importedForEditing && (
             <span className="analysis-source uploaded">Uploaded Resume Analysis Available</span>
