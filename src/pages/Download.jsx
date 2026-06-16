@@ -3,9 +3,13 @@ import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
 import {
   ACTIVE_RESUME_CHANGED_EVENT,
-  getActiveResumeData,
+  loadActiveResumeRecord,
 } from '../data/activeResumeData'
 import { downloadFormats } from '../data/appData'
+import {
+  loadResumeData,
+  normalizeResumeData,
+} from '../data/resumeData'
 import {
   RESUME_WORKFLOW_CLEARED_EVENT,
 } from '../data/uploadedResumeData'
@@ -18,6 +22,23 @@ import {
   RESUME_TEMPLATES,
   createClassicEngineeringResume,
 } from '../utils/resumeFormatters'
+
+function getDownloadResumeSource() {
+  const activeRecord = loadActiveResumeRecord()
+  if (activeRecord?.source === 'editor-approved') {
+    return {
+      resumeData: normalizeResumeData(activeRecord.resumeData),
+      source: 'editor-approved',
+      sourceLabel: 'Editor-approved resume',
+    }
+  }
+
+  return {
+    resumeData: normalizeResumeData(loadResumeData()),
+    source: 'builder',
+    sourceLabel: 'Builder resume',
+  }
+}
 
 function ResumeExportPreview({ resume, previewRef = null }) {
   const { personalDetails, sections } = resume
@@ -121,20 +142,24 @@ function ResumeExportPreview({ resume, previewRef = null }) {
 }
 
 function Download() {
-  const [activeResume, setActiveResume] = useState(getActiveResumeData)
+  const [downloadResume, setDownloadResume] = useState(getDownloadResumeSource)
   const [selectedFormat, setSelectedFormat] = useState('PDF')
   const [selectedTemplate, setSelectedTemplate] = useState(RESUME_TEMPLATES[0].id)
   const [exportStatus, setExportStatus] = useState('idle')
   const [statusMessage, setStatusMessage] = useState('Download ready')
 
+  const exportResumeData = useMemo(
+    () => normalizeResumeData(downloadResume.resumeData),
+    [downloadResume.resumeData],
+  )
   const exportResume = useMemo(
-    () => createClassicEngineeringResume(activeResume.resumeData),
-    [activeResume.resumeData],
+    () => createClassicEngineeringResume(exportResumeData),
+    [exportResumeData],
   )
 
   useEffect(() => {
     function handleWorkflowCleared() {
-      setActiveResume(getActiveResumeData())
+      setDownloadResume(getDownloadResumeSource())
     }
 
     window.addEventListener(RESUME_WORKFLOW_CLEARED_EVENT, handleWorkflowCleared)
@@ -157,11 +182,11 @@ function Download() {
 
     try {
       if (format === 'pdf') {
-        await downloadPdfResume(activeResume.resumeData)
+        await downloadPdfResume(exportResumeData)
       } else if (format === 'docx') {
-        await downloadDocxResume(activeResume.resumeData)
+        await downloadDocxResume(exportResumeData)
       } else {
-        downloadTxtResume(activeResume.resumeData)
+        downloadTxtResume(exportResumeData)
       }
       setExportStatus('ready')
       setStatusMessage('Download ready')
@@ -181,12 +206,9 @@ function Download() {
           description="Export the latest approved resume data in a polished Classic Engineering Resume format."
         />
         <div className="workspace-source-row">
-          <span className={`analysis-source ${activeResume.source.includes('uploaded') ? 'uploaded' : ''}`}>
-            {activeResume.sourceLabel}
+          <span className="analysis-source">
+            Export source: {downloadResume.sourceLabel}
           </span>
-          {activeResume.uploadedResume && !activeResume.uploadedResume.importedForEditing && (
-            <span className="analysis-source uploaded">Uploaded Resume Analysis Available</span>
-          )}
         </div>
 
         <div className="download-layout">
