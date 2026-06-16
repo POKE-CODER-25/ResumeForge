@@ -47,6 +47,20 @@ const SECTION_WEIGHTS = {
   certifications: 2,
 }
 
+const EMPTY_HEALTH_REPORT = {
+  overallScore: 0,
+  sectionCompletenessScore: 0,
+  technicalStrengthScore: 0,
+  impactStrengthScore: 0,
+  professionalReadinessScore: 0,
+  strengths: ['Resume structure is ready for you to add professional details'],
+  weaknesses: ['Missing professional summary'],
+  missingSections: Object.values(SECTION_LABELS),
+  recommendations: ['Go to Builder to create your resume'],
+  resumeDoctor: [],
+  doctorSuggestions: [],
+}
+
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0
 }
@@ -76,8 +90,12 @@ function uniqueDoctorItems(items) {
 }
 
 function parseSkills(data) {
+  const skills = data?.skills && typeof data.skills === 'object' && !Array.isArray(data.skills)
+    ? data.skills
+    : {}
+
   return unique(
-    [data.skills.technicalSkills, data.skills.tools]
+    [skills.technicalSkills, skills.tools]
       .join(',')
       .split(/[,;\n|]/)
       .map((skill) => skill.trim())
@@ -513,50 +531,54 @@ function calibrateOverallScore(rawScore, data, sectionState, skills, technical, 
 }
 
 export function analyzeResumeHealth(input) {
-  const data = adaptInput(input)
-  const skills = parseSkills(data)
-  const sectionState = getSectionState(data, skills)
-  const writingEntries = getWritingEntries(data)
-  const sectionCompletenessScore = scoreCompleteness(sectionState)
-  const technical = scoreTechnicalStrength(data, skills)
-  const impact = scoreImpactStrength(data, writingEntries)
-  const professionalReadinessScore = scoreProfessionalReadiness(data, sectionState)
-  const feedback = buildFeedback(data, sectionState, skills, technical, impact, writingEntries)
-  const missingSections = Object.entries(sectionState)
-    .filter(([, state]) => !state.present)
-    .map(([section]) => SECTION_LABELS[section])
-  const rawScore = sectionCompletenessScore
-    + technical.score
-    + impact.score
-    + professionalReadinessScore
-  const overallScore = calibrateOverallScore(
-    rawScore,
-    data,
-    sectionState,
-    skills,
-    technical,
-    impact,
-  )
-  const resumeDoctor = buildResumeDoctor(
-    data,
-    sectionState,
-    skills,
-    impact,
-    writingEntries,
-  )
+  try {
+    const data = adaptInput(input)
+    const skills = parseSkills(data)
+    const sectionState = getSectionState(data, skills)
+    const writingEntries = getWritingEntries(data)
+    const sectionCompletenessScore = scoreCompleteness(sectionState)
+    const technical = scoreTechnicalStrength(data, skills)
+    const impact = scoreImpactStrength(data, writingEntries)
+    const professionalReadinessScore = scoreProfessionalReadiness(data, sectionState)
+    const feedback = buildFeedback(data, sectionState, skills, technical, impact, writingEntries)
+    const missingSections = Object.entries(sectionState)
+      .filter(([, state]) => !state.present)
+      .map(([section]) => SECTION_LABELS[section])
+    const rawScore = sectionCompletenessScore
+      + technical.score
+      + impact.score
+      + professionalReadinessScore
+    const overallScore = calibrateOverallScore(
+      rawScore,
+      data,
+      sectionState,
+      skills,
+      technical,
+      impact,
+    )
+    const resumeDoctor = buildResumeDoctor(
+      data,
+      sectionState,
+      skills,
+      impact,
+      writingEntries,
+    )
 
-  return {
-    overallScore,
-    sectionCompletenessScore,
-    technicalStrengthScore: technical.score,
-    impactStrengthScore: impact.score,
-    professionalReadinessScore,
-    strengths: feedback.strengths,
-    weaknesses: feedback.weaknesses,
-    missingSections,
-    recommendations: feedback.recommendations,
-    resumeDoctor,
-    doctorSuggestions: resumeDoctor,
+    return {
+      overallScore,
+      sectionCompletenessScore,
+      technicalStrengthScore: technical.score,
+      impactStrengthScore: impact.score,
+      professionalReadinessScore,
+      strengths: feedback.strengths,
+      weaknesses: feedback.weaknesses,
+      missingSections,
+      recommendations: feedback.recommendations,
+      resumeDoctor,
+      doctorSuggestions: resumeDoctor,
+    }
+  } catch {
+    return EMPTY_HEALTH_REPORT
   }
 }
 

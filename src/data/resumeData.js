@@ -20,6 +20,10 @@ function asString(value) {
     : ''
 }
 
+function hasPrimitiveText(value) {
+  return typeof value === 'string' || typeof value === 'number'
+}
+
 const entryFactories = {
   education: () => ({
     id: createId(),
@@ -99,20 +103,53 @@ function normalizeRecord(value, defaults) {
 
 function normalizeEntries(entries, section) {
   const factory = entryFactories[section]
-  if (!factory || !Array.isArray(entries)) {
+  if (!factory) {
+    return []
+  }
+
+  const sourceEntries = Array.isArray(entries)
+    ? entries
+    : hasPrimitiveText(entries)
+      ? [entries]
+      : null
+
+  if (!sourceEntries) {
     return [factory ? factory() : null].filter(Boolean)
   }
 
-  return entries
-    .filter(isRecord)
+  const normalizedEntries = sourceEntries
     .map((entry) => {
       const defaults = factory()
+
+      if (!isRecord(entry)) {
+        const text = asString(entry)
+        if (!text.trim()) {
+          return null
+        }
+
+        const fallbackField = {
+          education: 'degree',
+          projects: 'title',
+          experience: 'role',
+          certifications: 'title',
+        }[section]
+
+        return {
+          ...defaults,
+          [fallbackField]: text,
+          id: createId(),
+        }
+      }
+
       const normalized = normalizeRecord(entry, defaults)
       return {
         ...normalized,
         id: asString(entry.id) || createId(),
       }
     })
+    .filter(Boolean)
+
+  return normalizedEntries.length > 0 ? normalizedEntries : [factory()]
 }
 
 export function normalizeResumeData(value) {

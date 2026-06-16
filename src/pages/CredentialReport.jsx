@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import PageHeader from '../components/PageHeader'
@@ -8,7 +8,12 @@ import {
   getActiveResumeData,
   saveActiveResumeData,
 } from '../data/activeResumeData'
-import { saveResumeData } from '../data/resumeData'
+import {
+  defaultResumeData,
+  getResumeCompletion,
+  normalizeResumeData,
+  saveResumeData,
+} from '../data/resumeData'
 import {
   clearUploadedResumeWorkflow,
   loadUploadedResumeData,
@@ -27,6 +32,34 @@ const categoryMeta = [
   { key: 'professionalReadinessScore', label: 'Professional Readiness', icon: 'shield' },
 ]
 
+function getSafeActiveAnalysis(options) {
+  try {
+    const active = getActiveResumeData(options)
+    return {
+      ...active,
+      resumeData: normalizeResumeData(active?.resumeData || defaultResumeData),
+      source: typeof active?.source === 'string' ? active.source : 'default',
+      sourceLabel: typeof active?.sourceLabel === 'string' ? active.sourceLabel : 'Builder Resume',
+      uploadedResume: active?.uploadedResume || null,
+    }
+  } catch {
+    return {
+      resumeData: normalizeResumeData(defaultResumeData),
+      source: 'default',
+      sourceLabel: 'Builder Resume',
+      uploadedResume: null,
+    }
+  }
+}
+
+function getSafeUploadedResume() {
+  try {
+    return loadUploadedResumeData()
+  } catch {
+    return null
+  }
+}
+
 function getScoreStatus(score) {
   if (score >= 85) {
     return { label: 'Application ready', title: 'Your resume has a strong professional foundation.' }
@@ -41,15 +74,17 @@ function getScoreStatus(score) {
 }
 
 function FeedbackCard({ title, icon, tone, items, emptyMessage }) {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : []
+
   return (
     <article className={`health-feedback-card ${tone}`}>
       <div className="health-card-heading">
         <span><Icon name={icon} size={19} /></span>
-        <div><h2>{title}</h2><small>{items.length} identified</small></div>
+        <div><h2>{title}</h2><small>{safeItems.length} identified</small></div>
       </div>
-      {items.length > 0 ? (
+      {safeItems.length > 0 ? (
         <ul className="health-list">
-          {items.map((item) => <li key={item}><Icon name={tone === 'positive' ? 'check' : 'target'} size={16} />{item}</li>)}
+          {safeItems.map((item) => <li key={item}><Icon name={tone === 'positive' ? 'check' : 'target'} size={16} />{item}</li>)}
         </ul>
       ) : <p className="health-empty">{emptyMessage}</p>}
     </article>
@@ -57,26 +92,28 @@ function FeedbackCard({ title, icon, tone, items, emptyMessage }) {
 }
 
 function DoctorCard({ item }) {
+  const safeItem = item && typeof item === 'object' ? item : {}
+
   return (
     <article className="doctor-suggestion">
       <div className="doctor-card-top">
-        <span className={`priority-badge ${item.priority}`}>{item.priority} priority</span>
-        <span className="doctor-section">{item.section}</span>
+        <span className={`priority-badge ${safeItem.priority || 'medium'}`}>{safeItem.priority || 'medium'} priority</span>
+        <span className="doctor-section">{safeItem.section || 'Resume'}</span>
       </div>
-      <h3>{item.issue}</h3>
+      <h3>{safeItem.issue || 'Resume improvement'}</h3>
       <div className="doctor-reason">
         <strong>Why it matters</strong>
-        <p>{item.whyItMatters}</p>
+        <p>{safeItem.whyItMatters || 'Complete resume data helps generate a stronger health report.'}</p>
       </div>
-      {item.originalText && (
+      {safeItem.originalText && (
         <div className="doctor-original">
           <strong>Current version</strong>
-          <p>{item.originalText}</p>
+          <p>{safeItem.originalText}</p>
         </div>
       )}
       <div className="doctor-improvement">
         <strong>Suggested improvement</strong>
-        <p>{item.improvedText}</p>
+        <p>{safeItem.improvedText || 'Go to Builder to create or complete your resume.'}</p>
       </div>
     </article>
   )
@@ -85,27 +122,32 @@ function DoctorCard({ item }) {
 function CredentialReport() {
   const navigate = useNavigate()
   const [activeAnalysis, setActiveAnalysis] = useState(() => (
-    getActiveResumeData({
+    getSafeActiveAnalysis({
       includeUploadedAnalysis: true,
       preferUploadedAnalysis: true,
     })
   ))
-  const [uploadedResume, setUploadedResume] = useState(loadUploadedResumeData)
+  const [uploadedResume, setUploadedResume] = useState(getSafeUploadedResume)
   const [uploadedFile, setUploadedFile] = useState(() => {
-    const stored = loadUploadedResumeData()
+    const stored = getSafeUploadedResume()
     return stored ? { name: stored.filename } : null
   })
   const [uploadError, setUploadError] = useState('')
   const [uploadWarning, setUploadWarning] = useState(() => (
-    loadUploadedResumeData()?.warning || ''
+    getSafeUploadedResume()?.warning || ''
   ))
   const [isProcessing, setIsProcessing] = useState(false)
   const [showUploadedPreview, setShowUploadedPreview] = useState(false)
-  const isUploadedSource = activeAnalysis.source === 'uploaded-analysis'
-    || activeAnalysis.source === 'uploaded-import'
-  const report = analyzeResumeHealth(activeAnalysis.resumeData)
+  const normalizedResumeData = useMemo(() => (
+    normalizeResumeData(activeAnalysis?.resumeData || defaultResumeData)
+  ), [activeAnalysis])
+  const hasResumeData = getResumeCompletion(normalizedResumeData) > 0
+  const isUploadedSource = activeAnalysis?.source === 'uploaded-analysis'
+    || activeAnalysis?.source === 'uploaded-import'
+  const report = analyzeResumeHealth(normalizedResumeData)
+  const safeResumeDoctor = Array.isArray(report.resumeDoctor) ? report.resumeDoctor : []
   const scoreStatus = getScoreStatus(report.overallScore)
-  const sourceLabel = activeAnalysis.source === 'editor-approved'
+  const sourceLabel = activeAnalysis?.source === 'editor-approved'
     ? 'Analyzing Editor-Approved Resume'
     : isUploadedSource
       ? 'Analyzing Uploaded Resume'
@@ -113,7 +155,7 @@ function CredentialReport() {
 
   useEffect(() => {
     function handleWorkflowCleared() {
-      setActiveAnalysis(getActiveResumeData({ includeUploadedAnalysis: true }))
+      setActiveAnalysis(getSafeActiveAnalysis({ includeUploadedAnalysis: true }))
       setUploadedFile(null)
       setUploadedResume(null)
       setUploadError('')
@@ -156,7 +198,7 @@ function CredentialReport() {
         updatedAt: new Date().toISOString(),
       }
       saveUploadedResumeData(storedUpload)
-      setUploadedResume(loadUploadedResumeData() || storedUpload)
+      setUploadedResume(getSafeUploadedResume() || storedUpload)
       setActiveAnalysis({
         resumeData: analysis.resumeData,
         source: 'uploaded-analysis',
@@ -202,6 +244,17 @@ function CredentialReport() {
           description="A clear view of what is working, what needs attention, and which sections can strengthen your application."
           actions={<button className="button button-primary" type="button" onClick={improveResume}>Improve resume <Icon name="arrowRight" size={17} /></button>}
         />
+        {!hasResumeData && (
+          <section className="health-overview">
+            <div className="large-score">
+              <div>
+                <span className="status-label">No resume data</span>
+                <h2>No resume data found. Go to Builder to create your resume.</h2>
+              </div>
+            </div>
+            <Link className="button button-primary" to="/builder">Go to Builder <Icon name="arrowRight" size={17} /></Link>
+          </section>
+        )}
         <ResumeUpload
           file={uploadedFile}
           error={uploadError}
@@ -229,12 +282,12 @@ function CredentialReport() {
           <section className="uploaded-resume-preview">
             <div className="uploaded-preview-heading">
               <div><span className="status-label">Extracted content</span><h2>{uploadedResume.filename}</h2></div>
-              <span>{uploadedResume.extractedText.length.toLocaleString()} characters</span>
+              <span>{String(uploadedResume.extractedText || '').length.toLocaleString()} characters</span>
             </div>
             <div className="uploaded-preview-grid">
               <div>
                 <h3>Plain text preview</h3>
-                <pre>{uploadedResume.extractedText}</pre>
+                <pre>{String(uploadedResume.extractedText || '')}</pre>
               </div>
               <div>
                 <h3>Parsed sections</h3>
@@ -300,9 +353,9 @@ function CredentialReport() {
               <p>Prioritized, deterministic improvements based on the exact content in your {sourceLabel.toLowerCase()}.</p>
             </div>
           </div>
-          {report.resumeDoctor.length > 0 ? (
+          {safeResumeDoctor.length > 0 ? (
             <div className="doctor-suggestion-list">
-              {report.resumeDoctor.map((item, index) => (
+              {safeResumeDoctor.map((item, index) => (
                 <DoctorCard
                   item={item}
                   key={`${item.issue}-${item.section}-${index}`}
@@ -321,7 +374,8 @@ function CredentialReport() {
 }
 
 function ParsedResumeSummary({ resumeData }) {
-  const personal = resumeData.personalDetails
+  const data = normalizeResumeData(resumeData || defaultResumeData)
+  const personal = data.personalDetails
   const sections = [
     ['Name', personal.fullName],
     ['Target role', personal.targetRole],
@@ -331,8 +385,8 @@ function ParsedResumeSummary({ resumeData }) {
       personal.github,
       personal.portfolio,
     ].filter(Boolean).join('\n')],
-    ['Summary', resumeData.summary],
-    ['Education', resumeData.education.map((entry) => (
+    ['Summary', data.summary],
+    ['Education', data.education.map((entry) => (
       [
         entry.degree,
         entry.institution,
@@ -341,8 +395,8 @@ function ParsedResumeSummary({ resumeData }) {
         entry.cgpa && `CGPA: ${entry.cgpa}`,
       ].filter(Boolean).join(' | ')
     )).filter(Boolean).join('\n')],
-    ['Grouped skills', resumeData.skills.tools || resumeData.skills.technicalSkills],
-    ['Projects', resumeData.projects.map((entry) => (
+    ['Grouped skills', data.skills.tools || data.skills.technicalSkills],
+    ['Projects', data.projects.map((entry) => (
       [
         entry.title,
         entry.description,
@@ -352,9 +406,9 @@ function ParsedResumeSummary({ resumeData }) {
         entry.githubLink,
       ].filter(Boolean).join('\n')
     )).filter(Boolean).join('\n\n')],
-    ['Experience', resumeData.experience.map((entry) => entry.role || entry.company).filter(Boolean).join(', ')],
-    ['Certifications', resumeData.certifications.map((entry) => (
-      [entry.title, entry.issuer].filter(Boolean).join(' — ')
+    ['Experience', data.experience.map((entry) => entry.role || entry.company).filter(Boolean).join(', ')],
+    ['Certifications', data.certifications.map((entry) => (
+      [entry.title, entry.issuer].filter(Boolean).join(' - ')
     )).filter(Boolean).join('\n')],
   ]
 
