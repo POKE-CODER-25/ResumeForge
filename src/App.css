@@ -3555,3 +3555,1028 @@ main {
     left: 4px;
   }
 }
+
+/* ResumeForge professional utility polish */
+:root {
+  --yellow-500: #facc15;
+  --yellow-400: #fbbf24;
+  --yellow-100: #fef3c7;
+  --yellow-50: #fffbeb;
+  --utility-border: #dbeafe;
+  --utility-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 14px 34px rgba(15, 23, 42, .07);
+  --utility-shadow-lg: 0 24px 70px rgba(37, 99, 235, .13);
+}
+
+body {
+  color: var(--slate-600);
+  background: #f8fbff;
+}
+
+.site-header {
+  height: 72px;
+  background: rgba(255, 255, 255, .98);
+  border-bottom: 1px solid #dbeafe;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+}
+
+.brand {
+  letter-spacing: 0;
+}
+
+.brand > span:last-child > span {
+  color: var(--blue-600);
+}
+
+.brand-mark {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+  border: 1px solid #eab308;
+  border-radius: 12px;
+  box-shadow: 0 10px 22px rgba(250, 204, 21, .25);
+}
+
+.main-nav {
+  gap: 8px;
+  padding: 6px;
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 999px;
+}
+
+.main-nav a {
+  padding: 9px 14px;
+  color: var(--slate-600);
+  border-radius: 999px;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+  color: var(--blue-600);
+  background: white;
+}
+
+.main-nav a.active::after {
+  display: none;
+}
+
+.button {
+  border-radius: 12px;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.button-primary {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+  border-color: #eab308;
+  box-shadow: 0 12px 24px rgba(234, 179, 8, .22);
+}
+
+.button-primary:hover:not(:disabled) {
+  color: var(--navy-950);
+  background: var(--yellow-400);
+  box-shadow: 0 14px 28px rgba(234, 179, 8, .28);
+}
+
+.button-secondary {
+  color: var(--blue-700, #1d4ed8);
+  background: white;
+  border-color: var(--blue-100);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, .06);
+}
+
+.button-secondary:hover:not(:disabled) {
+  color: var(--blue-600);
+  border-color: #93c5fd;
+  background: var(--blue-50);
+}
+
+.button-light {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+  border-color: #eab308;
+}
+
+.hero-section {
+  padding: 82px 0 78px;
+  color: var(--navy-950);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+}
+
+.hero-section::before,
+.hero-glow {
+  display: none;
+}
+
+.hero-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(390px, .84fr);
+  gap: 56px;
+}
+
+.hero-copy .eyebrow {
+  color: var(--blue-600);
+  background: white;
+  border: 1px solid var(--blue-100);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, .08);
+}
+
+.hero-copy h1 {
+  max-width: 720px;
+  color: var(--navy-950);
+  font-size: clamp(42px, 5vw, 64px);
+  letter-spacing: 0;
+}
+
+.hero-copy h1 span,
+.hero-copy h1 strong {
+  color: var(--blue-600);
+}
+
+.hero-copy > p {
+  color: var(--slate-600);
+}
+
+.hero-actions .button-secondary {
+  color: var(--blue-600);
+  background: white;
+  border-color: var(--blue-100);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, .08);
+}
+
+.trust-row {
+  color: var(--slate-600);
+}
+
+.trust-row svg {
+  color: var(--blue-600);
+}
+
+.product-window,
+.resume-form-section,
+.progress-card,
+.health-overview,
+.resume-upload-panel,
+.uploaded-resume-actions,
+.uploaded-resume-preview,
+.health-category-card,
+.health-feedback-card,
+.doctor-panel,
+.editor-form-column,
+.consent-suggestions-panel,
+.download-main,
+.download-preview,
+.live-preview-column {
+  background: white;
+  border: 1px solid var(--utility-border);
+  border-radius: 18px;
+  box-shadow: var(--utility-shadow);
+}
+
+.product-window {
+  border-radius: 22px;
+  transform: none;
+  box-shadow: var(--utility-shadow-lg);
+}
+
+.window-bar,
+.live-preview-toolbar,
+.preview-toolbar,
+.panel-toolbar {
+  background: var(--blue-50);
+  border-color: var(--blue-100);
+}
+
+.score-panel,
+.resume-drop-zone,
+.repeatable-entry,
+.review-summary > div,
+.download-resume-stage,
+.builder-preview-stage,
+.editor-resume-stage {
+  background: #f8fbff;
+  border-color: var(--blue-100);
+}
+
+.score-ring {
+  color: var(--blue-600);
+  background: radial-gradient(circle closest-side, white 76%, transparent 78% 99%), conic-gradient(var(--yellow-500) 84%, var(--blue-100) 0);
+}
+
+.floating-note {
+  color: var(--blue-600);
+  border-color: var(--blue-100);
+  box-shadow: 0 18px 42px rgba(37, 99, 235, .16);
+}
+
+.workflow-section {
+  background: white;
+  border-top: 1px solid var(--blue-100);
+  border-bottom: 1px solid var(--blue-100);
+}
+
+.workflow-step > span {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+}
+
+.features-section,
+.page-surface {
+  background:
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 48%, #eff6ff 100%);
+}
+
+.feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-card {
+  min-height: 245px;
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  background: white;
+  border: 1px solid var(--utility-border);
+  border-radius: 18px;
+  box-shadow: var(--utility-shadow);
+}
+
+.feature-card:hover {
+  border-color: #93c5fd;
+  box-shadow: var(--utility-shadow-lg);
+}
+
+.feature-icon,
+.builder-icon,
+.form-section-heading > span,
+.drop-zone-empty > span,
+.uploaded-file-icon,
+.report-icon,
+.doctor-panel-icon,
+.format-icon {
+  color: var(--blue-600);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 14px;
+}
+
+.feature-card:nth-child(2n) .feature-icon,
+.format-card.selected .format-icon,
+.download-status .feature-icon {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+  border-color: #eab308;
+}
+
+.feature-card p {
+  min-height: 0;
+  flex: 1;
+}
+
+.feature-card a {
+  color: var(--blue-600);
+  font-weight: 800;
+}
+
+.cta-section {
+  background: white;
+}
+
+.cta-card {
+  color: var(--navy-950);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 22px;
+  box-shadow: var(--utility-shadow);
+}
+
+.cta-card .eyebrow {
+  color: var(--blue-600);
+}
+
+.cta-card h2 {
+  color: var(--navy-950);
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.site-footer {
+  color: var(--slate-600);
+  background: white;
+  border-top: 1px solid var(--blue-100);
+}
+
+.footer-brand {
+  color: var(--navy-950);
+}
+
+.page-heading {
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--blue-100);
+  border-radius: 22px;
+  box-shadow: var(--utility-shadow);
+}
+
+.page-heading h1 {
+  letter-spacing: 0;
+}
+
+.progress-track,
+.health-progress {
+  background: var(--blue-100);
+}
+
+.progress-track span,
+.health-progress span {
+  background: linear-gradient(90deg, var(--blue-600), var(--yellow-500));
+}
+
+.resume-form-section {
+  overflow: hidden;
+  padding: 0;
+}
+
+.resume-form-section > .form-section-heading,
+.repeatable-section-header {
+  margin: 0;
+  padding: 20px 22px;
+  background: var(--blue-50);
+  border-bottom: 1px solid var(--blue-100);
+}
+
+.resume-form-section > .form-grid,
+.repeatable-entry-list,
+.empty-entry-button {
+  margin: 22px;
+}
+
+.repeatable-section-header .form-section-heading {
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.form-field input,
+.form-field textarea,
+.template-selector select {
+  border-color: #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.template-selector select:focus {
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+}
+
+.add-entry-button,
+.empty-entry-button {
+  color: var(--blue-600);
+  background: white;
+  border-color: var(--blue-100);
+  border-radius: 12px;
+}
+
+.entry-heading button,
+.remove-uploaded-resume,
+.suggestion-dismiss {
+  border-radius: 10px;
+}
+
+.live-preview-column,
+.editor-preview-column,
+.download-preview {
+  border-radius: 20px;
+}
+
+.health-overview {
+  border-top: 4px solid var(--yellow-500);
+}
+
+.report-score {
+  background: radial-gradient(circle closest-side, white 76%, transparent 78% 99%), conic-gradient(var(--yellow-500) var(--score), var(--blue-100) 0);
+}
+
+.health-category-card {
+  border-top: 3px solid var(--blue-600);
+}
+
+.health-feedback-card.positive {
+  border-top: 3px solid #22c55e;
+}
+
+.health-feedback-card.warning,
+.health-feedback-card.missing {
+  border-top: 3px solid var(--yellow-500);
+}
+
+.doctor-panel {
+  border-top: 4px solid var(--blue-600);
+}
+
+.doctor-suggestion,
+.consent-suggestion-card,
+.format-card {
+  border: 1px solid var(--blue-100);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
+}
+
+.doctor-improvement,
+.suggestion-decision.applied {
+  background: var(--blue-50);
+  border-color: var(--blue-100);
+}
+
+.doctor-original {
+  background: var(--yellow-50);
+  border-color: var(--yellow-100);
+}
+
+.priority-badge.high,
+.priority-badge.medium {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+  border-color: #eab308;
+}
+
+.resume-drop-zone {
+  border: 2px dashed #93c5fd;
+  border-radius: 18px;
+}
+
+.resume-drop-zone:hover,
+.resume-drop-zone:focus,
+.resume-drop-zone.dragging {
+  background: white;
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 5px rgba(37, 99, 235, .1);
+}
+
+.editor-status-bar,
+.workspace-source-row {
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--blue-100);
+  border-radius: 16px;
+  box-shadow: var(--utility-shadow);
+}
+
+.review-summary {
+  gap: 14px;
+}
+
+.review-summary > div {
+  border: 1px solid var(--blue-100);
+  border-radius: 16px;
+}
+
+.consent-suggestion-card.applied {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.consent-suggestion-card.skipped {
+  border-color: var(--slate-200);
+  background: var(--slate-50);
+}
+
+.suggestion-actions .button-primary {
+  background: var(--yellow-500);
+}
+
+.suggestion-actions .button-secondary {
+  color: var(--blue-600);
+}
+
+.download-layout {
+  align-items: start;
+}
+
+.download-main {
+  padding: 28px;
+}
+
+.format-card {
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.format-card:hover,
+.format-card:focus-visible {
+  border-color: #93c5fd;
+  box-shadow: var(--utility-shadow);
+}
+
+.format-card.selected {
+  border-color: var(--yellow-500);
+  background: var(--yellow-50);
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, .18), var(--utility-shadow);
+}
+
+.format-card button {
+  color: var(--navy-950);
+  background: var(--yellow-500);
+  border-color: #eab308;
+}
+
+.download-resume-stage,
+.builder-preview-stage,
+.editor-resume-stage {
+  border-top: 1px solid var(--blue-100);
+}
+
+.export-resume,
+.builder-resume {
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, .12);
+}
+
+@media (max-width: 1040px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .main-nav {
+    top: 65px;
+    right: 16px;
+    left: 16px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-heading,
+  .download-main {
+    padding: 20px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cta-actions,
+  .cta-actions .button {
+    width: 100%;
+  }
+
+  .resume-form-section > .form-grid,
+  .repeatable-entry-list,
+  .empty-entry-button {
+    margin: 18px;
+  }
+}
+
+/* Blue + cyan refinement pass */
+:root {
+  --cyan-600: #06b6d4;
+  --cyan-500: #22d3ee;
+  --cyan-100: #cffafe;
+  --cyan-50: #ecfeff;
+  --section-blue: #dbeafe;
+  --utility-border: #bfdbfe;
+  --utility-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 18px 44px rgba(37, 99, 235, .09);
+  --utility-shadow-lg: 0 28px 80px rgba(37, 99, 235, .18);
+}
+
+body {
+  background: var(--blue-50);
+}
+
+.site-header {
+  background: rgba(255, 255, 255, .96);
+  border-bottom-color: var(--blue-100);
+}
+
+.brand-mark {
+  color: white;
+  background: linear-gradient(135deg, var(--blue-600), var(--cyan-600));
+  border-color: rgba(255, 255, 255, .2);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, .26);
+}
+
+.main-nav {
+  background: #eef7ff;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+  color: var(--navy-950);
+  background: var(--cyan-100);
+}
+
+.button-primary,
+.button-light,
+.format-card button {
+  color: white;
+  background: var(--blue-600);
+  border-color: var(--blue-600);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, .24);
+}
+
+.button-primary:hover:not(:disabled),
+.button-light:hover:not(:disabled),
+.format-card button:hover:not(:disabled) {
+  color: white;
+  background: var(--cyan-600);
+  border-color: var(--cyan-600);
+  box-shadow: 0 16px 34px rgba(6, 182, 212, .28);
+}
+
+.button-secondary {
+  color: var(--blue-600);
+  background: white;
+  border-color: var(--blue-100);
+}
+
+.button-secondary:hover:not(:disabled) {
+  color: var(--navy-950);
+  background: var(--cyan-50);
+  border-color: var(--cyan-600);
+}
+
+.hero-section {
+  padding: 96px 0 88px;
+  background:
+    radial-gradient(circle at 82% 16%, rgba(6, 182, 212, .18), transparent 27%),
+    linear-gradient(135deg, #ffffff 0%, #eff6ff 38%, #dbeafe 100%);
+}
+
+.hero-grid {
+  align-items: stretch;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero-copy .eyebrow {
+  color: var(--navy-950);
+  background: var(--cyan-50);
+  border-color: var(--cyan-100);
+}
+
+.hero-copy h1 {
+  max-width: 780px;
+  font-size: clamp(48px, 5.5vw, 72px);
+  line-height: 1.03;
+}
+
+.hero-copy > p {
+  max-width: 650px;
+  font-size: 19px;
+}
+
+.hero-product {
+  padding: 18px;
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(191, 219, 254, .9);
+  border-radius: 28px;
+  box-shadow: var(--utility-shadow-lg);
+}
+
+.product-window {
+  height: 100%;
+  background: linear-gradient(180deg, white, #f8fbff);
+}
+
+.window-bar,
+.score-panel,
+.workflow-section,
+.page-heading,
+.resume-form-section > .form-section-heading,
+.repeatable-section-header,
+.preview-toolbar,
+.live-preview-toolbar,
+.panel-toolbar {
+  background: var(--section-blue);
+}
+
+.score-ring,
+.report-score {
+  color: var(--blue-600);
+  background: radial-gradient(circle closest-side, white 76%, transparent 78% 99%), conic-gradient(var(--cyan-600) var(--score, 84%), var(--blue-100) 0);
+}
+
+.analysis-icon {
+  color: var(--cyan-600);
+  background: var(--cyan-50);
+  border: 1px solid var(--cyan-100);
+}
+
+.analysis-icon.good {
+  color: #16a34a;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.floating-note {
+  color: var(--cyan-600);
+  border-color: var(--cyan-100);
+}
+
+.features-section,
+.page-surface {
+  background:
+    linear-gradient(180deg, var(--section-blue) 0%, #ffffff 42%, var(--blue-50) 100%);
+}
+
+.feature-grid {
+  gap: 22px;
+}
+
+.feature-card {
+  min-height: 260px;
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  border-color: #bfdbfe;
+}
+
+.feature-card:nth-child(2n) {
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+}
+
+.feature-card h3,
+.download-status h2,
+.page-heading h1,
+.section-heading h2 {
+  color: var(--navy-950);
+}
+
+.feature-icon,
+.builder-icon,
+.form-section-heading > span,
+.drop-zone-empty > span,
+.uploaded-file-icon,
+.report-icon,
+.doctor-panel-icon,
+.format-icon,
+.feature-card:nth-child(2n) .feature-icon,
+.format-card.selected .format-icon,
+.download-status .feature-icon {
+  color: white;
+  background: linear-gradient(135deg, var(--blue-600), var(--cyan-600));
+  border-color: transparent;
+}
+
+.feature-card a,
+.eyebrow,
+.status-label,
+.analysis-source.uploaded,
+.upload-privacy svg,
+.preview-toolbar svg {
+  color: var(--cyan-600);
+}
+
+.cta-card {
+  color: white;
+  background: linear-gradient(135deg, var(--blue-600), var(--cyan-600));
+  border-color: transparent;
+}
+
+.cta-card h2,
+.cta-card .eyebrow {
+  color: white;
+}
+
+.cta-card .button-primary {
+  color: var(--blue-600);
+  background: white;
+  border-color: white;
+}
+
+.cta-card .button-secondary {
+  color: white;
+  background: rgba(255, 255, 255, .14);
+  border-color: rgba(255, 255, 255, .4);
+}
+
+.site-footer {
+  background: var(--navy-950);
+  color: #cbd5e1;
+  border-top-color: rgba(255, 255, 255, .08);
+}
+
+.footer-brand {
+  color: white;
+}
+
+.page-heading {
+  border-color: #bfdbfe;
+}
+
+.resume-form-section,
+.progress-card,
+.health-overview,
+.resume-upload-panel,
+.uploaded-resume-actions,
+.uploaded-resume-preview,
+.health-category-card,
+.health-feedback-card,
+.doctor-panel,
+.editor-form-column,
+.consent-suggestions-panel,
+.download-main,
+.download-preview,
+.live-preview-column {
+  border-color: #bfdbfe;
+}
+
+.resume-form-section > .form-section-heading h2,
+.repeatable-section-header h2 {
+  color: var(--navy-950);
+}
+
+.repeatable-entry,
+.review-summary > div,
+.download-resume-stage,
+.builder-preview-stage,
+.editor-resume-stage {
+  background: var(--blue-50);
+  border-color: #bfdbfe;
+}
+
+.progress-track span,
+.health-progress span {
+  background: linear-gradient(90deg, var(--blue-600), var(--cyan-600));
+}
+
+.health-overview {
+  border-top-color: var(--cyan-600);
+  background: linear-gradient(135deg, white 0%, var(--blue-50) 100%);
+}
+
+.health-category-card {
+  background: linear-gradient(180deg, white 0%, var(--blue-50) 100%);
+  border-top-color: var(--blue-600);
+}
+
+.health-feedback-card.positive {
+  border-top-color: #16a34a;
+}
+
+.health-feedback-card.warning,
+.health-feedback-card.missing {
+  border-top-color: #f97316;
+}
+
+.health-feedback-card.recommendation {
+  border-top: 3px solid var(--cyan-600);
+}
+
+.health-feedback-card.positive .health-card-heading > span {
+  color: #16a34a;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.health-feedback-card.warning .health-card-heading > span,
+.health-feedback-card.missing .health-card-heading > span {
+  color: #f97316;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.health-feedback-card.recommendation .health-card-heading > span {
+  color: var(--cyan-600);
+  background: var(--cyan-50);
+  border-color: var(--cyan-100);
+}
+
+.doctor-panel {
+  border-top-color: var(--cyan-600);
+  background: linear-gradient(180deg, white 0%, #f8fbff 100%);
+}
+
+.doctor-improvement,
+.suggestion-decision.applied {
+  background: var(--cyan-50);
+  border-color: var(--cyan-100);
+}
+
+.doctor-original {
+  background: var(--blue-50);
+  border-color: var(--blue-100);
+}
+
+.priority-badge.high,
+.priority-badge.medium {
+  color: white;
+  background: var(--blue-600);
+  border-color: var(--blue-600);
+}
+
+.resume-drop-zone {
+  background: var(--blue-50);
+}
+
+.resume-drop-zone:hover,
+.resume-drop-zone:focus,
+.resume-drop-zone.dragging {
+  border-color: var(--cyan-600);
+  box-shadow: 0 0 0 5px rgba(6, 182, 212, .12);
+}
+
+.editor-status-bar,
+.workspace-source-row {
+  background: var(--blue-50);
+  border-color: #bfdbfe;
+}
+
+.review-summary > div {
+  background: linear-gradient(180deg, white, var(--blue-50));
+}
+
+.consent-suggestions-panel,
+.editor-form-column {
+  background: linear-gradient(180deg, white 0%, var(--blue-50) 100%);
+}
+
+.consent-suggestion-card {
+  background: white;
+  border-color: #bfdbfe;
+}
+
+.consent-suggestion-card.applied {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.suggestion-actions .button-primary {
+  background: var(--blue-600);
+}
+
+.suggestion-actions .button-primary:hover:not(:disabled) {
+  background: var(--cyan-600);
+}
+
+.download-layout {
+  gap: 28px;
+}
+
+.download-main {
+  background: linear-gradient(180deg, white 0%, var(--blue-50) 100%);
+}
+
+.download-preview {
+  background: white;
+}
+
+.download-status {
+  padding: 18px;
+  background: var(--section-blue);
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+}
+
+.format-card {
+  background: white;
+  border-color: #bfdbfe;
+}
+
+.format-card:hover,
+.format-card:focus-visible {
+  border-color: var(--cyan-600);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, .12), var(--utility-shadow);
+}
+
+.format-card.selected {
+  border-color: var(--blue-600);
+  background: linear-gradient(135deg, #eff6ff, #ecfeff);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .16), var(--utility-shadow);
+}
+
+.format-title span {
+  color: var(--navy-950);
+  background: var(--cyan-100);
+}
+
+.template-selector select {
+  background: white;
+  border-color: #bfdbfe;
+}
+
+@media (max-width: 640px) {
+  .hero-section {
+    padding: 70px 0;
+  }
+
+  .hero-copy h1 {
+    font-size: 42px;
+  }
+}

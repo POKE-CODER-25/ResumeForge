@@ -2,10 +2,12 @@ import { Link } from 'react-router-dom'
 import Icon from '../components/Icon'
 
 const features = [
-  { icon: 'sparkle', title: 'AI-powered resume intelligence', text: 'Turn your background into focused, role-ready content with intelligent guidance.' },
-  { icon: 'trend', title: 'Resume Health Report', text: 'See strengths, gaps, and practical opportunities before you start applying.' },
-  { icon: 'edit', title: 'Live editing', text: 'Refine every section in a focused workspace with contextual improvements.' },
-  { icon: 'download', title: 'Download-ready resume', text: 'Prepare a polished resume for the format your next application requires.' },
+  { icon: 'laptop', title: 'Resume Builder', text: 'Create structured resume sections with a clean live preview.' },
+  { icon: 'monitor', title: 'Resume Health Report', text: 'Score completeness, technical strength, impact, and readiness.' },
+  { icon: 'compass', title: 'Resume Doctor', text: 'Review practical suggestions before applying any changes.' },
+  { icon: 'fileText', title: 'Upload Resume Checker', text: 'Upload an existing resume and inspect the parsed content locally.' },
+  { icon: 'edit', title: 'Editor', text: 'Polish every section in a focused final review workspace.' },
+  { icon: 'download', title: 'Download PDF/DOCX/TXT', text: 'Export the exact approved resume content in common formats.' },
 ]
 
 const workflow = ['Analyze', 'Improve', 'Generate', 'Edit', 'Download']
@@ -17,21 +19,21 @@ function Home() {
         <div className="hero-glow" />
         <div className="container hero-grid">
           <div className="hero-copy">
-            <span className="eyebrow"><Icon name="sparkle" size={15} /> Smarter resumes. Stronger applications.</span>
-            <h1>Build a resume that proves your <span>potential.</span></h1>
-            <p>ResumeForge combines structured resume building with practical intelligence, helping you shape a clear, credible, and application-ready story.</p>
+            <span className="eyebrow"><Icon name="code" size={15} /> Professional resume utility</span>
+            <h1>Build, analyze, improve, and download your resume.</h1>
+            <p>ResumeForge is a focused workspace for students and developers who need a clear, reliable resume without a complicated workflow.</p>
             <div className="hero-actions">
               <Link className="button button-primary button-large" to="/builder">
-                Start building free <Icon name="arrowRight" size={18} />
+                Start Building <Icon name="arrowRight" size={18} />
               </Link>
               <Link className="button button-secondary button-large" to="/credential-report">
-                View health report
+                Check Existing Resume
               </Link>
             </div>
             <div className="trust-row">
-              <span><Icon name="check" size={16} /> Structured guidance</span>
-              <span><Icon name="check" size={16} /> ATS-conscious</span>
-              <span><Icon name="check" size={16} /> Your content, your control</span>
+              <span><Icon name="shield" size={16} /> Local-first workflow</span>
+              <span><Icon name="ruler" size={16} /> Structured resume layout</span>
+              <span><Icon name="compass" size={16} /> Review before export</span>
             </div>
           </div>
 
@@ -39,7 +41,7 @@ function Home() {
             <div className="product-window">
               <div className="window-bar">
                 <span className="window-dot" /><span className="window-dot" /><span className="window-dot" />
-                <span>Resume Health Report</span>
+                <span>ResumeForge workspace</span>
               </div>
               <div className="product-content">
                 <div className="score-panel">
@@ -53,7 +55,7 @@ function Home() {
                 </div>
               </div>
             </div>
-            <div className="floating-note"><Icon name="sparkle" size={18} /><span><strong>Smart suggestion</strong>Use a stronger action verb here</span></div>
+                <div className="floating-note"><Icon name="compass" size={18} /><span><strong>Resume Doctor</strong>Review improvements before applying</span></div>
           </div>
         </div>
       </section>
@@ -76,9 +78,9 @@ function Home() {
       <section className="features-section">
         <div className="container">
           <div className="section-heading">
-            <span className="eyebrow">Everything you need</span>
-            <h2>From scattered experience to a clear professional story.</h2>
-            <p>Build with a guided process designed around the questions recruiters actually ask.</p>
+            <span className="eyebrow">ResumeForge tools</span>
+            <h2>Simple online resume tools in one clean workspace.</h2>
+            <p>Use the tool cards below to build, inspect, improve, edit, and export your resume with confidence.</p>
           </div>
           <div className="feature-grid">
             {features.map((feature) => (
@@ -86,7 +88,9 @@ function Home() {
                 <span className="feature-icon"><Icon name={feature.icon} size={23} /></span>
                 <h3>{feature.title}</h3>
                 <p>{feature.text}</p>
-                <Link to="/builder">Explore feature <Icon name="arrowRight" size={16} /></Link>
+                <Link to={feature.title === 'Upload Resume Checker' || feature.title === 'Resume Health Report' ? '/credential-report' : feature.title === 'Download PDF/DOCX/TXT' ? '/download' : feature.title === 'Editor' ? '/editor' : '/builder'}>
+                  Open tool <Icon name="arrowRight" size={16} />
+                </Link>
               </article>
             ))}
           </div>
@@ -95,8 +99,11 @@ function Home() {
 
       <section className="cta-section">
         <div className="container cta-card">
-          <div><span className="eyebrow">Your next application starts here</span><h2>Forge a resume built for what comes next.</h2></div>
-          <Link className="button button-light button-large" to="/builder">Create your resume <Icon name="arrowRight" size={18} /></Link>
+          <div><span className="eyebrow">Ready when you are</span><h2>Start with the builder or check an existing resume.</h2></div>
+          <div className="cta-actions">
+            <Link className="button button-primary button-large" to="/builder">Start Building <Icon name="arrowRight" size={18} /></Link>
+            <Link className="button button-secondary button-large" to="/credential-report">Check Existing Resume</Link>
+          </div>
         </div>
       </section>
     </>
