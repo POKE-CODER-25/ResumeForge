@@ -225,12 +225,12 @@ export async function downloadPdfResume(resumeData) {
   const fileName = `${getResumeFileBaseName(resumeData)}.pdf`
   const pdf = new jsPDF('p', 'mm', 'a4')
   const layout = {
-    marginX: 17,
-    marginTop: 17,
-    marginBottom: 16,
+    marginX: 15,
+    marginTop: 15,
+    marginBottom: 12,
     pageWidth: pdf.internal.pageSize.getWidth(),
     pageHeight: pdf.internal.pageSize.getHeight(),
-    contentWidth: pdf.internal.pageSize.getWidth() - 34,
+    contentWidth: pdf.internal.pageSize.getWidth() - 30,
   }
   const colors = {
     navy: [15, 23, 42],
@@ -260,6 +260,10 @@ export async function downloadPdfResume(resumeData) {
     if (height > remainingHeight() && cursorY > layout.marginTop) {
       addPage()
     }
+  }
+
+  function usablePageHeight() {
+    return layout.pageHeight - layout.marginTop - layout.marginBottom
   }
 
   function splitText(text, width = layout.contentWidth, size = 9) {
@@ -295,12 +299,12 @@ export async function downloadPdfResume(resumeData) {
     const fullName = resume.personalDetails.fullName || 'Your Name'
     setText(colors.navy, 18, 'bold')
     pdf.text(fullName.toUpperCase(), layout.pageWidth / 2, cursorY, { align: 'center' })
-    cursorY += 6.5
+    cursorY += 6
 
     if (resume.personalDetails.targetRole) {
       setText(colors.blue, 10, 'bold')
       pdf.text(resume.personalDetails.targetRole, layout.pageWidth / 2, cursorY, { align: 'center' })
-      cursorY += 5
+      cursorY += 4.6
     }
 
     const contactLine = [
@@ -313,135 +317,149 @@ export async function downloadPdfResume(resumeData) {
       setText(colors.muted, 8)
       lines.forEach((line) => {
         pdf.text(line, layout.pageWidth / 2, cursorY, { align: 'center' })
-        cursorY += 3.8
+        cursorY += 3.5
       })
     }
 
     pdf.setDrawColor(...colors.navy)
     pdf.setLineWidth(0.6)
     pdf.line(layout.marginX, cursorY + 1.5, layout.pageWidth - layout.marginX, cursorY + 1.5)
-    cursorY += 7
+    cursorY += 6.2
   }
 
   function sectionHeadingHeight() {
-    return 8.5
+    return 7.4
   }
 
   function drawSectionHeading(title) {
     setText(colors.navy, 9.5, 'bold')
     pdf.text(title.toUpperCase(), layout.marginX, cursorY)
-    cursorY += 2.6
+    cursorY += 2.4
     pdf.setDrawColor(...colors.rule)
     pdf.setLineWidth(0.25)
     pdf.line(layout.marginX, cursorY, layout.pageWidth - layout.marginX, cursorY)
-    cursorY += 5.2
+    cursorY += 4.6
   }
 
   function entryHeadingHeight(item) {
     const title = [item.title, item.techStack].filter(Boolean).join(' | ')
     const meta = item.date || item.organization || [item.issuer, item.year].filter(Boolean).join(' | ')
     return Math.max(
-      estimateParagraph(title || 'Entry', 118, 8.8, 4.1),
-      meta ? estimateParagraph(meta, 46, 7.7, 3.7) : 0,
+      estimateParagraph(title || 'Entry', 122, 8.6, 3.9),
+      meta ? estimateParagraph(meta, 48, 7.5, 3.5) : 0,
     )
   }
 
   function drawEntryHeading(item, fallbackTitle = 'Entry') {
     const title = [item.title || fallbackTitle, item.techStack].filter(Boolean).join(' | ')
     const meta = item.date || [item.issuer, item.year].filter(Boolean).join(' | ')
-    const titleLines = splitText(title, 118, 8.8)
-    const metaLines = meta ? splitText(meta, 46, 7.7) : []
+    const titleLines = splitText(title, 122, 8.6)
+    const metaLines = meta ? splitText(meta, 48, 7.5) : []
     const startY = cursorY
 
-    setText(colors.navy, 8.8, 'bold')
-    titleLines.forEach((line, index) => pdf.text(line, layout.marginX, startY + (index * 4.1)))
+    setText(colors.navy, 8.6, 'bold')
+    titleLines.forEach((line, index) => pdf.text(line, layout.marginX, startY + (index * 3.9)))
     if (metaLines.length > 0) {
-      setText(colors.muted, 7.7, 'bold')
+      setText(colors.muted, 7.5, 'bold')
       metaLines.forEach((line, index) => (
-        pdf.text(line, layout.pageWidth - layout.marginX, startY + (index * 3.7), { align: 'right' })
+        pdf.text(line, layout.pageWidth - layout.marginX, startY + (index * 3.5), { align: 'right' })
       ))
     }
-    cursorY += Math.max(textHeight(titleLines, 4.1), textHeight(metaLines, 3.7))
+    cursorY += Math.max(textHeight(titleLines, 3.9), textHeight(metaLines, 3.5))
   }
 
   function drawOrganization(value) {
     if (!value) {
       return
     }
-    setText(colors.slate, 8.2, 'italic')
+    setText(colors.slate, 8, 'italic')
     pdf.text(value, layout.marginX, cursorY)
-    cursorY += 4
+    cursorY += 3.7
   }
 
   function estimateEntry(section, item) {
     let height = entryHeadingHeight(item)
     if (item.organization) {
-      height += 4
+      height += 3.7
     }
     if (item.description) {
-      height += estimateParagraph(item.description, layout.contentWidth, 8.3, 4)
+      height += estimateParagraph(item.description, layout.contentWidth, 8.1, 3.8)
     }
     if (item.details) {
-      height += item.details.reduce((sum, detail) => sum + estimateParagraph(detail, layout.contentWidth, 8.2, 3.9), 0)
+      height += item.details.reduce((sum, detail) => sum + estimateParagraph(detail, layout.contentWidth, 8, 3.7), 0)
     }
     if (item.links) {
       height += item.links.reduce((sum, link) => (
-        sum + estimateParagraph(`${link.label}: ${link.url}`, layout.contentWidth, 7.8, 3.7)
+        sum + estimateParagraph(`${link.label}: ${link.url}`, layout.contentWidth, 7.6, 3.5)
       ), 0)
     }
     if (item.link) {
-      height += estimateParagraph(`Credential: ${item.link}`, layout.contentWidth, 7.8, 3.7)
+      height += estimateParagraph(`Credential: ${item.link}`, layout.contentWidth, 7.6, 3.5)
     }
     if (item.bullets) {
       height += item.bullets.reduce((sum, bullet) => (
-        sum + estimateParagraph(bullet, layout.contentWidth - 5, 8.2, 3.9)
+        sum + estimateParagraph(bullet, layout.contentWidth - 5, 8, 3.7)
       ), 0)
     }
     if (section.type === 'certifications') {
-      height += 1.5
+      height += 0.8
     }
-    return height + 4
+    return height + 3.2
   }
 
   function drawEntry(section, item) {
     drawEntryHeading(item, section.title)
     drawOrganization(item.organization)
     if (item.description) {
-      drawWrappedText(item.description, layout.marginX, layout.contentWidth, { size: 8.3, lineHeight: 4 })
+      drawWrappedText(item.description, layout.marginX, layout.contentWidth, { size: 8.1, lineHeight: 3.8 })
     }
     item.details?.forEach((detail) => drawWrappedText(detail, layout.marginX, layout.contentWidth, {
-      size: 8.2,
-      lineHeight: 3.9,
+      size: 8,
+      lineHeight: 3.7,
     }))
     item.links?.forEach((link) => drawWrappedText(`${link.label}: ${link.url}`, layout.marginX, layout.contentWidth, {
-      size: 7.8,
-      lineHeight: 3.7,
+      size: 7.6,
+      lineHeight: 3.5,
       color: colors.blue,
     }))
     if (item.link) {
       drawWrappedText(`Credential: ${item.link}`, layout.marginX, layout.contentWidth, {
-        size: 7.8,
-        lineHeight: 3.7,
+        size: 7.6,
+        lineHeight: 3.5,
         color: colors.blue,
       })
     }
     item.bullets?.forEach((bullet) => {
       drawWrappedText(bullet, layout.marginX + 4, layout.contentWidth - 5, {
-        size: 8.2,
-        lineHeight: 3.9,
+        size: 8,
+        lineHeight: 3.7,
         prefix: '- ',
       })
     })
-    cursorY += section.type === 'certifications' ? 2.2 : 4
+    cursorY += section.type === 'certifications' ? 1.2 : 3.2
+  }
+
+  function estimateSection(section) {
+    if (section.type === 'paragraph') {
+      return sectionHeadingHeight() + estimateParagraph(section.content, layout.contentWidth, 8.6, 4)
+    }
+    if (section.type === 'skills') {
+      return sectionHeadingHeight() + section.groups.reduce((sum, group) => (
+        sum + estimateParagraph(`${group.label}: ${group.values.join(', ')}`, layout.contentWidth, 8.2, 3.8)
+      ), 0) + 2.4
+    }
+    return sectionHeadingHeight() + section.items.reduce((sum, item) => (
+      sum + estimateEntry(section, item)
+    ), 0)
   }
 
   function estimateSectionLead(section) {
     if (section.type === 'paragraph') {
-      return sectionHeadingHeight() + estimateParagraph(section.content, layout.contentWidth, 8.8, 4.2)
+      return sectionHeadingHeight() + estimateParagraph(section.content, layout.contentWidth, 8.6, 4)
     }
     if (section.type === 'skills') {
       return sectionHeadingHeight() + section.groups.slice(0, 2).reduce((sum, group) => (
-        sum + estimateParagraph(`${group.label}: ${group.values.join(', ')}`, layout.contentWidth, 8.4, 4)
+        sum + estimateParagraph(`${group.label}: ${group.values.join(', ')}`, layout.contentWidth, 8.2, 3.8)
       ), 0)
     }
     return sectionHeadingHeight() + estimateEntry(section, section.items[0])
@@ -450,34 +468,44 @@ export async function downloadPdfResume(resumeData) {
   drawHeader()
 
   resume.sections.forEach((section) => {
-    ensureSpace(Math.min(estimateSectionLead(section), layout.pageHeight - layout.marginTop - layout.marginBottom))
+    const sectionHeight = estimateSection(section)
+    if (section.type === 'certifications' && sectionHeight <= usablePageHeight()) {
+      ensureSpace(sectionHeight)
+    } else {
+      ensureSpace(Math.min(estimateSectionLead(section), usablePageHeight()))
+    }
     drawSectionHeading(section.title)
 
     if (section.type === 'paragraph') {
       drawWrappedText(section.content, layout.marginX, layout.contentWidth, {
-        size: 8.8,
-        lineHeight: 4.2,
+        size: 8.6,
+        lineHeight: 4,
       })
-      cursorY += 3
+      cursorY += 2.4
       return
     }
 
     if (section.type === 'skills') {
       section.groups.forEach((group) => {
         const text = `${group.label}: ${group.values.join(', ')}`
-        ensureSpace(estimateParagraph(text, layout.contentWidth, 8.4, 4) + 2)
+        ensureSpace(estimateParagraph(text, layout.contentWidth, 8.2, 3.8) + 2)
         drawWrappedText(text, layout.marginX, layout.contentWidth, {
-          size: 8.4,
-          lineHeight: 4,
+          size: 8.2,
+          lineHeight: 3.8,
         })
       })
-      cursorY += 3
+      cursorY += 2.4
       return
     }
 
-    section.items.forEach((item) => {
+    section.items.forEach((item, index) => {
       const itemHeight = estimateEntry(section, item)
-      ensureSpace(Math.min(itemHeight, layout.pageHeight - layout.marginTop - layout.marginBottom))
+      const remainingItems = section.items.length - index
+      const keepLastCertificationsTogether = section.type === 'certifications' && remainingItems === 2
+      const requiredHeight = keepLastCertificationsTogether
+        ? itemHeight + estimateEntry(section, section.items[index + 1])
+        : itemHeight
+      ensureSpace(Math.min(requiredHeight, usablePageHeight()))
       drawEntry(section, item)
     })
   })
