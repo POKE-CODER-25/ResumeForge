@@ -55,9 +55,114 @@ function getValue(event) {
   return event?.target?.value ?? ''
 }
 
-function replaceExactText(resumeData, suggestion) {
+const guidancePatterns = [
+  /add a verified result/gi,
+  /for example:?/gi,
+  /example:/gi,
+  /served 500\+ users/gi,
+  /reduced load time by 30%/gi,
+  /automated 5 hours of weekly work/gi,
+  /or deployed the product publicly/gi,
+]
+
+function normalizeComparableText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[.!?;:,\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function sanitizeSuggestionText(value) {
+  const text = String(value || '')
+  const guidanceIndex = text.search(/(?:add a verified result|for example:?|example:)/i)
+  const resumeText = guidanceIndex >= 0 ? text.slice(0, guidanceIndex) : text
+
+  return guidancePatterns
+    .reduce((current, pattern) => current.replace(pattern, ''), resumeText)
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .trim()
+}
+
+function isGuidanceOnlyText(value) {
+  const sanitized = sanitizeSuggestionText(value)
+  return !sanitized || !/[a-z0-9]/i.test(sanitized)
+}
+
+function fieldContainsText(fieldValue, text) {
+  const comparableField = normalizeComparableText(fieldValue)
+  const comparableText = normalizeComparableText(text)
+  return Boolean(
+    comparableText
+    && (
+      comparableField === comparableText
+      || comparableField.includes(comparableText)
+      || comparableField.split('\n').some((line) => normalizeComparableText(line) === comparableText)
+    ),
+  )
+}
+
+function isDuplicateResumeText(resumeData, text) {
+  const data = normalizeResumeData(resumeData)
+  const searchableFields = [
+    data.summary,
+    ...data.projects.flatMap((project) => [project.description, project.highlights]),
+    ...data.experience.map((entry) => entry.responsibilities),
+  ]
+
+  return searchableFields.some((field) => fieldContainsText(field, text))
+}
+
+function replaceLineOrText(value, original, replacement) {
+  const lines = String(value || '').split('\n')
+  const lineIndex = lines.findIndex((line) => fieldContainsText(line, original))
+  if (lineIndex >= 0) {
+    lines[lineIndex] = replacement
+    return lines.join('\n')
+  }
+
+  if (fieldContainsText(value, original)) {
+    return String(value || '').replace(original, replacement)
+  }
+
+  return null
+}
+
+function getProjectLabelFromSuggestion(suggestion) {
+  const issue = String(suggestion?.issue || '')
+  const match = issue.match(/\bin\s+(.+)$/i)
+  return match?.[1]?.trim() || ''
+}
+
+function findProjectForSuggestion(data, suggestion) {
   const original = suggestion.originalText?.trim()
-  if (!original) {
+  if (original) {
+    const project = data.projects.find((entry) => (
+      fieldContainsText(entry.description, original)
+      || fieldContainsText(entry.highlights, original)
+    ))
+    if (project) {
+      return project
+    }
+  }
+
+  const projectLabel = getProjectLabelFromSuggestion(suggestion)
+  if (!projectLabel) {
+    return null
+  }
+
+  return data.projects.find((entry) => (
+    normalizeComparableText(entry.title) === normalizeComparableText(projectLabel)
+  )) || null
+}
+
+function replaceSuggestionText(resumeData, suggestion, sanitizedText) {
+  const original = suggestion.originalText?.trim()
+  if (!original || !sanitizedText) {
     return null
   }
 
@@ -73,31 +178,56 @@ function replaceExactText(resumeData, suggestion) {
     return null
   }
 
+  const targetProject = section === 'Projects'
+    ? findProjectForSuggestion(data, suggestion)
+    : null
   let replaced = false
   const entries = data[targets.key].map((entry) => {
     if (replaced) {
       return entry
     }
+    if (targetProject && entry.id !== targetProject.id) {
+      return entry
+    }
 
     for (const field of targets.fields) {
-      const value = entry[field] || ''
-      if (value.trim() === original) {
+      const nextValue = replaceLineOrText(entry[field], original, sanitizedText)
+      if (nextValue !== null) {
         replaced = true
-        return { ...entry, [field]: suggestion.improvedText }
-      }
-
-      const lines = value.split('\n')
-      const lineIndex = lines.findIndex((line) => line.trim() === original)
-      if (lineIndex >= 0) {
-        lines[lineIndex] = suggestion.improvedText
-        replaced = true
-        return { ...entry, [field]: lines.join('\n') }
+        return { ...entry, [field]: nextValue }
       }
     }
     return entry
   })
 
   return replaced ? { ...data, [targets.key]: entries } : null
+}
+
+function appendProjectSuggestion(resumeData, suggestion, sanitizedText) {
+  const data = normalizeResumeData(resumeData)
+  const targetProject = findProjectForSuggestion(data, suggestion)
+  const fallbackProject = data.projects.find((project) => (
+    project.title || project.description || project.highlights
+  ))
+  const projectToUpdate = targetProject || fallbackProject
+
+  if (!projectToUpdate) {
+    return null
+  }
+
+  return {
+    ...data,
+    projects: data.projects.map((project) => {
+      if (project.id !== projectToUpdate.id) {
+        return project
+      }
+
+      return {
+        ...project,
+        highlights: [project.highlights, sanitizedText].filter(Boolean).join('\n'),
+      }
+    }),
+  }
 }
 
 function Editor() {
@@ -107,6 +237,7 @@ function Editor() {
   const [saveStatus, setSaveStatus] = useState('Saved automatically')
   const [appendRequest, setAppendRequest] = useState('')
   const saveStatusTimer = useRef(null)
+  const appliedSuggestionIds = useRef(new Set())
   const [initialSuggestions, setInitialSuggestions] = useState(() => (
     analyzeResumeHealth(activeResume.resumeData).resumeDoctor
   ))
@@ -119,6 +250,7 @@ function Editor() {
       setResumeData(nextSource.resumeData)
       setInitialSuggestions(analyzeResumeHealth(nextSource.resumeData).resumeDoctor)
       setReviewStatuses({})
+      appliedSuggestionIds.current = new Set()
       setAppendRequest('')
       setSaveStatus('Saved automatically')
     }
@@ -189,6 +321,9 @@ function Editor() {
 
   function setSuggestionStatus(suggestion, status) {
     const suggestionId = getSuggestionId(suggestion)
+    if (status === 'applied') {
+      appliedSuggestionIds.current.add(suggestionId)
+    }
     const nextStatuses = { ...reviewStatuses, [suggestionId]: status }
     setReviewStatuses(nextStatuses)
     saveEditorReviewStatuses(nextStatuses)
@@ -197,13 +332,33 @@ function Editor() {
 
   function applySuggestion(suggestion) {
     const suggestionId = getSuggestionId(suggestion)
-    if (suggestion.section === 'Professional Summary') {
-      commitResume({ ...resumeData, summary: suggestion.improvedText })
+    if (appliedSuggestionIds.current.has(suggestionId) || reviewStatuses[suggestionId] === 'applied') {
+      return
+    }
+
+    const sanitizedText = sanitizeSuggestionText(suggestion.improvedText)
+    if (!sanitizedText || isGuidanceOnlyText(suggestion.improvedText)) {
       setSuggestionStatus(suggestion, 'applied')
       return
     }
 
-    const replacedResume = replaceExactText(resumeData, suggestion)
+    if (isDuplicateResumeText(resumeData, sanitizedText)) {
+      setSuggestionStatus(suggestion, 'applied')
+      return
+    }
+
+    if (suggestion.section === 'Professional Summary') {
+      commitResume({ ...resumeData, summary: sanitizedText })
+      setSuggestionStatus(suggestion, 'applied')
+      return
+    }
+
+    if (suggestion.section === 'Experience' && !suggestion.originalText) {
+      setSuggestionStatus(suggestion, 'applied')
+      return
+    }
+
+    const replacedResume = replaceSuggestionText(resumeData, suggestion, sanitizedText)
     if (replacedResume) {
       commitResume(replacedResume)
       setSuggestionStatus(suggestion, 'applied')
@@ -216,19 +371,25 @@ function Editor() {
   }
 
   function appendProjectBullet(suggestion) {
-    const firstProject = resumeData.projects.find((project) => (
-      project.title || project.description || project.highlights
-    ))
-    if (!firstProject) {
+    const suggestionId = getSuggestionId(suggestion)
+    if (appliedSuggestionIds.current.has(suggestionId) || reviewStatuses[suggestionId] === 'applied') {
       return
     }
 
-    updateEntry(
-      'projects',
-      firstProject.id,
-      'highlights',
-      [firstProject.highlights, suggestion.improvedText].filter(Boolean).join('\n'),
-    )
+    const sanitizedText = sanitizeSuggestionText(suggestion.improvedText)
+    if (!sanitizedText || isGuidanceOnlyText(suggestion.improvedText) || isDuplicateResumeText(resumeData, sanitizedText)) {
+      setSuggestionStatus(suggestion, 'applied')
+      return
+    }
+
+    const nextResume = appendProjectSuggestion(resumeData, suggestion, sanitizedText)
+    if (!nextResume) {
+      return
+    }
+
+    if (nextResume !== resumeData) {
+      commitResume(nextResume)
+    }
     setSuggestionStatus(suggestion, 'applied')
   }
 
@@ -317,8 +478,9 @@ function Editor() {
             {initialSuggestions.map((suggestion) => {
               const suggestionId = getSuggestionId(suggestion)
               const status = reviewStatuses[suggestionId]
+              const sanitizedText = sanitizeSuggestionText(suggestion.improvedText)
               const hasExactReplacement = Boolean(
-                replaceExactText(resumeData, suggestion),
+                replaceSuggestionText(resumeData, suggestion, sanitizedText),
               )
               return (
                 <SuggestionCard
